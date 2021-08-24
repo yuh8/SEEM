@@ -97,6 +97,37 @@ def graph_to_smiles(smi_graph, charges):
     return smi, mol
 
 
+def decompose_smi_graph(smi_graph):
+    con_graph = np.sum(smi_graph, axis=-1)
+    gragh_dim = con_graph.shape[0]
+    state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
+    states = []
+    actions = []
+    for jj in range(gragh_dim):
+        # terminate
+        if sum(smi_graph[jj, jj, :]) == 0:
+            return actions, states
+        # adding atom and charge
+        atom_act_idx = smi_graph[jj, jj, :len(ATOM_LIST)].argmax()
+        charge_act_idx = smi_graph[jj, jj, -len(CHARGES):].argmax()
+        loc_act_idx = None
+        bond_act_idx = None
+        actions.append(((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx)))
+        state[jj, jj, :] = smi_graph[jj, jj, :]
+        states.append(state)
+        for ii in range(jj):
+            charge_act_idx = None
+            atom_act_idx = None
+            if sum(smi_graph[ii, jj, :]) == 3:
+                # adding
+                loc_act_idx = ii
+                bond_act_idx = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].argmax()
+                actions.append((atom_act_idx, (loc_act_idx, bond_act_idx), charge_act_idx))
+                state[ii, jj, :] = smi_graph[ii, jj, :]
+                states.append(state)
+    return actions, states
+
+
 if __name__ == "__main__":
     smi = 'CCC(C(O)C)CN'
     smiles_to_graph(smi)
