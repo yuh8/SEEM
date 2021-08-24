@@ -1,10 +1,10 @@
 from rdkit import Chem
 
 
-MAX_NUM_ATOMS = 48
+MAX_NUM_ATOMS = 200
 ATOM_LIST = [
     'H', 'B', 'C', 'N', 'O', 'P', 'S', 'F', 'Cl', 'Br', 'I',
-    '[Se]', '[Na+]', 'Si'
+    'Se', 'Na', 'Si'
 ]
 
 BOND_DICT = Chem.rdchem.BondType.values
