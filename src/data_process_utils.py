@@ -22,8 +22,7 @@ def is_mol_valid(mol):
 
 
 def standardize_smiles(smi):
-    smi = Chem.MolToSmiles(Chem.MolFromSmiles(smi))
-    smi = Chem.CanonSmiles(smi)
+    smi = Chem.MolToSmiles(Chem.MolFromSmiles(smi), isomericSmiles=False)
     return smi
 
 
@@ -94,8 +93,7 @@ def graph_to_smiles(smi_graph, charges):
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
-    mol = mol.GetMol()
-    smi = Chem.MolToSmiles(mol, isomericSmiles=True)
+    smi = Chem.MolToSmiles(mol, isomericSmiles=False)
     return smi, mol
 
 
