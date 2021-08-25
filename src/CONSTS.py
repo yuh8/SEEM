@@ -1,7 +1,7 @@
 from rdkit import Chem
 
 
-MAX_NUM_ATOMS = 200
+MAX_NUM_ATOMS = 100
 ATOM_LIST = [
     'H', 'B', 'C', 'N', 'O', 'P', 'S', 'F', 'Cl', 'Br', 'I',
     'Se', 'Na', 'Si'

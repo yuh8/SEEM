@@ -1,9 +1,10 @@
 import numpy as np
+from copy import deepcopy
 from rdkit import Chem
 from rdkit import RDLogger
 from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
                      FEATURE_DEPTH, ATOM_LIST,
-                     BOND_NAMES, CHARGES)
+                     BOND_NAMES, CHARGES, MAX_NUM_ATOMS)
 RDLogger.DisableLog('rdApp.*')
 
 
@@ -97,6 +98,24 @@ def graph_to_smiles(smi_graph, charges):
     return smi, mol
 
 
+def act_idx_to_vect(action_idx):
+    num_atom_actions = len(ATOM_LIST)
+    num_charge_actions = len(CHARGES)
+    num_loc_bond_actions = MAX_NUM_ATOMS * len(BOND_NAMES)
+    action_vec = np.zeros(num_atom_actions + num_charge_actions + num_loc_bond_actions)
+    atom_act_idx, charge_act_idx = action_idx[0]
+    loc_act_idx, bond_act_idx = action_idx[1]
+    if atom_act_idx is not None and charge_act_idx is not None:
+        dest_idx = atom_act_idx * len(CHARGES) + charge_act_idx
+        action_vec[dest_idx] = 1
+
+    if loc_act_idx is not None and bond_act_idx is not None:
+        start_idx = num_atom_actions * num_charge_actions
+        dest_idx = start_idx + loc_act_idx * len(BOND_NAMES) + bond_act_idx
+        action_vec[dest_idx] = 1
+    return action_vec
+
+
 def decompose_smi_graph(smi_graph):
     con_graph = np.sum(smi_graph, axis=-1)
     gragh_dim = con_graph.shape[0]
@@ -112,9 +131,10 @@ def decompose_smi_graph(smi_graph):
         charge_act_idx = smi_graph[jj, jj, -len(CHARGES):].argmax()
         loc_act_idx = None
         bond_act_idx = None
-        actions.append(((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx)))
+        action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
+        actions.append(act_idx_to_vect(action_idx))
         state[jj, jj, :] = smi_graph[jj, jj, :]
-        states.append(state)
+        states.append(deepcopy(state))
         for ii in range(jj):
             charge_act_idx = None
             atom_act_idx = None
@@ -122,9 +142,11 @@ def decompose_smi_graph(smi_graph):
                 # adding
                 loc_act_idx = ii
                 bond_act_idx = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].argmax()
-                actions.append((atom_act_idx, (loc_act_idx, bond_act_idx), charge_act_idx))
+                action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
+                actions.append(act_idx_to_vect(action_idx))
                 state[ii, jj, :] = smi_graph[ii, jj, :]
-                states.append(state)
+                states.append(deepcopy(state))
+
     return actions, states
 
 
