@@ -76,11 +76,11 @@ def graph_to_smiles(smi_graph, charges):
         if con_graph[ii, ii] == 3:
             atom_feature_vec = smi_graph[ii, ii, :len(ATOM_LIST)]
             charge_feature_vec = smi_graph[ii, ii, -len(CHARGES):]
-            atom = np.array(ATOM_LIST)[atom_feature_vec == 2][0]
+            atom = np.array(ATOM_LIST)[atom_feature_vec.argmax()]
             atom = Chem.Atom(atom)
             atom_idx = mol.AddAtom(atom)
             atoms[ii] = atom_idx
-            charges[atom_idx] = np.array(CHARGES)[charge_feature_vec == 1][0]
+            charges[atom_idx] = np.array(CHARGES)[charge_feature_vec.argmax()]
 
     for ii in range(graph_dim):
         for jj in range(graph_dim):
@@ -90,7 +90,7 @@ def graph_to_smiles(smi_graph, charges):
             if (con_graph[ii, jj] == 3) and \
                     (ii in atoms.keys()) and (jj in atoms.keys()):
                 bond_feature_vec = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].astype(int)
-                bond_type = BOND_NAMES[np.where(bond_feature_vec)[0][0]]
+                bond_type = BOND_NAMES[bond_feature_vec.argmax()]
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
@@ -101,8 +101,9 @@ def graph_to_smiles(smi_graph, charges):
 def act_idx_to_vect(action_idx):
     num_atom_actions = len(ATOM_LIST)
     num_charge_actions = len(CHARGES)
-    num_loc_bond_actions = MAX_NUM_ATOMS * len(BOND_NAMES)
-    action_vec = np.zeros(num_atom_actions + num_charge_actions + num_loc_bond_actions)
+    num_act_charge_actions = num_atom_actions * num_charge_actions
+    num_loc_bond_actions = (MAX_NUM_ATOMS - 1) * len(BOND_NAMES)
+    action_vec = np.zeros(num_act_charge_actions + num_loc_bond_actions)
     atom_act_idx, charge_act_idx = action_idx[0]
     loc_act_idx, bond_act_idx = action_idx[1]
     if atom_act_idx is not None and charge_act_idx is not None:
@@ -110,7 +111,7 @@ def act_idx_to_vect(action_idx):
         action_vec[dest_idx] = 1
 
     if loc_act_idx is not None and bond_act_idx is not None:
-        start_idx = num_atom_actions * num_charge_actions
+        start_idx = num_act_charge_actions
         dest_idx = start_idx + loc_act_idx * len(BOND_NAMES) + bond_act_idx
         action_vec[dest_idx] = 1
     return action_vec
@@ -120,12 +121,12 @@ def decompose_smi_graph(smi_graph):
     con_graph = np.sum(smi_graph, axis=-1)
     gragh_dim = con_graph.shape[0]
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
-    states = []
+    states = [deepcopy(state)]
     actions = []
     for jj in range(gragh_dim):
         # terminate
         if sum(smi_graph[jj, jj, :]) == 0:
-            return actions, states
+            return actions, states[:-1]
         # adding atom and charge
         atom_act_idx = smi_graph[jj, jj, :len(ATOM_LIST)].argmax()
         charge_act_idx = smi_graph[jj, jj, -len(CHARGES):].argmax()
@@ -139,15 +140,17 @@ def decompose_smi_graph(smi_graph):
             charge_act_idx = None
             atom_act_idx = None
             if sum(smi_graph[ii, jj, :]) == 3:
-                # adding
+                # adding connection bond
                 loc_act_idx = ii
                 bond_act_idx = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].argmax()
                 action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
                 actions.append(act_idx_to_vect(action_idx))
                 state[ii, jj, :] = smi_graph[ii, jj, :]
+                # ensure symmetry
+                state[jj, ii, :] = smi_graph[ii, jj, :]
                 states.append(deepcopy(state))
 
-    return actions, states
+    return actions, states[:-1]
 
 
 if __name__ == "__main__":

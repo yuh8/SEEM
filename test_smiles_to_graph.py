@@ -70,13 +70,12 @@ def test_single(smi_original):
 
 
 def test_decompose_smi_graph(smi_original):
-    smi_graph, charges = smiles_to_graph(smi_original)
+    smi_graph, _ = smiles_to_graph(smi_original)
     decompose_smi_graph(smi_graph)
 
 
 if __name__ == "__main__":
-    test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O")
-    breakpoint()
+    print(test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O"))
     test_decompose_smi_graph("CN1CCCC1")
-    unit_test_mol()
+    # unit_test_mol()
     unit_test_smiles("data/df_train.csv")
