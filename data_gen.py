@@ -11,9 +11,7 @@ from src.CONSTS import BATCH_SIZE
 
 def get_train_val_test_data():
     df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
-    # create_folder('D:/seed_data/generator/train_data/')
     create_folder('D:/seed_data/generator/train_data/train_batch/')
-    # create_folder('D:/seed_data/generator/test_data/')
     create_folder('D:/seed_data/generator/test_data/test_batch/')
     create_folder('D:/seed_data/generator/test_data/val_batch/')
 
