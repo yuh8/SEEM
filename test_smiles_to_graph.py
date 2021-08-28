@@ -94,7 +94,6 @@ def unit_test_chembl(draw=False):
                 draw_smiles(row.Smiles, 'mol_original')
                 draw_smiles(smi_reconstructed, 'mol_reconstructed')
             print("original: {0}, reconstructed: {1}, pass_rate: {2}".format(smi_original, smi_reconstructed, round(count_pass / count_all, 4)))
-            breakpoint()
             continue
         count_pass += 1
 
@@ -102,6 +101,6 @@ def unit_test_chembl(draw=False):
 if __name__ == "__main__":
     # print(test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O"))
     # test_decompose_smi_graph("CN1CCCC1")
-    unit_test_mol()
+    # unit_test_mol()
     # unit_test_smiles("data/df_train.csv")
-    # unit_test_chembl()
+    unit_test_chembl()

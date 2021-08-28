@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from rdkit import Chem
+from collections import Counter
 from rdkit import RDLogger
-from src.data_process_utils import is_smile_valid, standardize_smiles
+from src.data_process_utils import is_smile_valid, standardize_smiles, standardize_smiles_to_mol
 from src.CONSTS import (ATOM_LIST, BOND_NAMES)
 RDLogger.DisableLog('rdApp.*')
 
@@ -11,11 +11,7 @@ def get_bond_sum_for_each_atom(smi):
     if not is_smile_valid(smi):
         return None
     smi = standardize_smiles(smi)
-    mol = Chem.MolFromSmiles(smi)
-    try:
-        Chem.Kekulize(mol)
-    except:
-        return None
+    mol = standardize_smiles_to_mol(smi)
     elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
     explicit_valence = [atom.GetExplicitValence() for atom in mol.GetAtoms()]
     bond_summary_matrix = np.zeros((len(ATOM_LIST), len(BOND_NAMES) + 1))
@@ -37,7 +33,29 @@ def get_bond_sum_for_each_atom(smi):
     return bond_summary_matrix
 
 
+def get_unique_elements_stats():
+    df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
+    elements = []
+    charges = []
+    for idx, row in df_data.iterrows():
+        smi = row.Smiles
+        try:
+            smi = standardize_smiles(smi)
+            mol = standardize_smiles_to_mol(smi)
+            _elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
+            _charges = [atom.GetFormalCharge() for atom in mol.GetAtoms()]
+        except:
+            continue
+        elements.extend(_elements)
+        charges.extend(_charges)
+        print(idx)
+    print(Counter(elements))
+    print(Counter(charges))
+    return Counter(elements)
+
+
 if __name__ == "__main__":
+    get_unique_elements_stats()
     df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
     bond_summary_matrix = np.zeros((len(ATOM_LIST), len(BOND_NAMES) + 1))
     count = 0

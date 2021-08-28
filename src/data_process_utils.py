@@ -15,6 +15,12 @@ def is_smile_valid(smi):
             return False
     except:
         return False
+
+    mol = Chem.MolFromSmiles(smi)
+    # we do not consider molecules with radical electrons
+    rad = [atom.GetNumRadicalElectrons() for atom in mol.GetAtoms()]
+    if sum(rad) > 0:
+        return False
     return True
 
 
@@ -22,6 +28,11 @@ def is_mol_valid(mol):
     try:
         Chem.MolToSmiles(mol)
     except:
+        return False
+
+    # we do not consider molecules with radical electrons
+    rad = [atom.GetNumRadicalElectrons() for atom in mol.GetAtoms()]
+    if sum(rad) > 0:
         return False
     return True
 
