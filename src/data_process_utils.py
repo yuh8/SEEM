@@ -1,6 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from rdkit import Chem
+from rdkit.Chem import Draw
 from rdkit import RDLogger
 from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
                      FEATURE_DEPTH, ATOM_LIST,
@@ -9,7 +10,10 @@ RDLogger.DisableLog('rdApp.*')
 
 
 def is_smile_valid(smi):
-    if Chem.MolFromSmiles(smi) is None:
+    try:
+        if Chem.MolFromSmiles(smi) is None:
+            return False
+    except:
         return False
     return True
 
@@ -23,16 +27,40 @@ def is_mol_valid(mol):
 
 
 def standardize_smiles(smi):
-    smi = Chem.MolToSmiles(Chem.MolFromSmiles(smi), isomericSmiles=False)
+    '''
+    convert smiles to Kekulized form
+    to convert aromatic bond to single/double/triple bonds
+    '''
+    mol = Chem.MolFromSmiles(smi)
+    Chem.Kekulize(mol, clearAromaticFlags=True)
+    smi = Chem.MolToSmiles(mol, isomericSmiles=False)
     return smi
+
+
+def standardize_smiles_to_mol(smi):
+    '''
+    remove aromatic bonds in mol object
+    '''
+    mol = Chem.MolFromSmiles(smi)
+    try:
+        Chem.Kekulize(mol, clearAromaticFlags=True)
+    except:
+        return mol
+    return mol
+
+
+def draw_smiles(smi, file_name):
+    mol = Chem.MolFromSmiles(smi)
+    Chem.Kekulize(mol, clearAromaticFlags=True)
+    Draw.MolToFile(mol, '{}.png'.format(file_name))
 
 
 def smiles_to_graph(smi):
     if not is_smile_valid(smi):
         return None
     smi = standardize_smiles(smi)
+    mol = standardize_smiles_to_mol(smi)
     smi_graph = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
-    mol = Chem.MolFromSmiles(smi)
     elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
     charges = [atom.GetFormalCharge() for atom in mol.GetAtoms()]
     for ii, ei in enumerate(elements):
@@ -94,16 +122,22 @@ def graph_to_smiles(smi_graph, charges):
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
-    smi = Chem.MolToSmiles(mol, isomericSmiles=False)
+    smi = Chem.MolToSmiles(mol)
     return smi, mol
 
 
-def act_idx_to_vect(action_idx):
+def get_initial_act_vec():
     num_atom_actions = len(ATOM_LIST)
     num_charge_actions = len(CHARGES)
     num_act_charge_actions = num_atom_actions * num_charge_actions
+    # number of location to place atoms x num of bond types
     num_loc_bond_actions = (MAX_NUM_ATOMS - 1) * len(BOND_NAMES)
     action_vec = np.zeros(num_act_charge_actions + num_loc_bond_actions)
+    return action_vec
+
+
+def act_idx_to_vect(action_idx):
+    action_vec = get_initial_act_vec()
     atom_act_idx, charge_act_idx = action_idx[0]
     loc_act_idx, bond_act_idx = action_idx[1]
     if atom_act_idx is not None and charge_act_idx is not None:
@@ -111,10 +145,14 @@ def act_idx_to_vect(action_idx):
         action_vec[dest_idx] = 1
 
     if loc_act_idx is not None and bond_act_idx is not None:
-        start_idx = num_act_charge_actions
+        start_idx = len(ATOM_LIST) * len(CHARGES)
         dest_idx = start_idx + loc_act_idx * len(BOND_NAMES) + bond_act_idx
         action_vec[dest_idx] = 1
     return action_vec
+
+
+def get_action_mask_from_state(state):
+    pass
 
 
 def decompose_smi_graph(smi_graph):
