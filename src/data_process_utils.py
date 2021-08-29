@@ -9,6 +9,22 @@ from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
 RDLogger.DisableLog('rdApp.*')
 
 
+def has_valid_elements(mol):
+    has_unknown_element = [atom.GetSymbol() not in ATOM_LIST for atom in mol.GetAtoms()]
+    if sum(has_unknown_element) > 0:
+        return False
+
+    has_unknown_charge = [atom.GetFormalCharge() not in CHARGES for atom in mol.GetAtoms()]
+    if sum(has_unknown_charge) > 0:
+        return False
+
+    has_radical = [atom.GetNumRadicalElectrons() > 0 for atom in mol.GetAtoms()]
+    if sum(has_radical) > 0:
+        return False
+
+    return True
+
+
 def is_smile_valid(smi):
     try:
         if Chem.MolFromSmiles(smi) is None:
@@ -17,10 +33,9 @@ def is_smile_valid(smi):
         return False
 
     mol = Chem.MolFromSmiles(smi)
-    # we do not consider molecules with radical electrons
-    rad = [atom.GetNumRadicalElectrons() for atom in mol.GetAtoms()]
-    if sum(rad) > 0:
+    if not has_valid_elements(mol):
         return False
+
     return True
 
 
@@ -30,17 +45,16 @@ def is_mol_valid(mol):
     except:
         return False
 
-    # we do not consider molecules with radical electrons
-    rad = [atom.GetNumRadicalElectrons() for atom in mol.GetAtoms()]
-    if sum(rad) > 0:
+    if not has_valid_elements(mol):
         return False
+
     return True
 
 
 def standardize_smiles(smi):
     '''
     convert smiles to Kekulized form
-    to convert aromatic bond to single/double/triple bonds
+    to convert aromatic bond to single/double/triple bond
     '''
     mol = Chem.MolFromSmiles(smi)
     Chem.Kekulize(mol, clearAromaticFlags=True)
@@ -52,6 +66,7 @@ def standardize_smiles_to_mol(smi):
     '''
     remove aromatic bonds in mol object
     '''
+    smi = standardize_smiles(smi)
     mol = Chem.MolFromSmiles(smi)
     try:
         Chem.Kekulize(mol, clearAromaticFlags=True)
@@ -69,7 +84,6 @@ def draw_smiles(smi, file_name):
 def smiles_to_graph(smi):
     if not is_smile_valid(smi):
         return None
-    smi = standardize_smiles(smi)
     mol = standardize_smiles_to_mol(smi)
     smi_graph = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
     elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
@@ -133,7 +147,7 @@ def graph_to_smiles(smi_graph, charges):
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
-    smi = Chem.MolToSmiles(mol)
+    smi = Chem.MolToSmiles(mol, isomericSmiles=False)
     return smi, mol
 
 
