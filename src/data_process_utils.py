@@ -4,7 +4,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
 from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
-                     FEATURE_DEPTH, ATOM_LIST,
+                     FEATURE_DEPTH, ATOM_LIST, ATOM_MAX_VALENCE,
                      BOND_NAMES, CHARGES, MAX_NUM_ATOMS)
 RDLogger.DisableLog('rdApp.*')
 
@@ -183,7 +183,8 @@ def get_action_mask_from_state(state):
 def decompose_smi_graph(smi_graph):
     con_graph = np.sum(smi_graph, axis=-1)
     gragh_dim = con_graph.shape[0]
-    state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
+    # last feature dim tracks the remaining valence
+    state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     states = [deepcopy(state)]
     actions = []
     for jj in range(gragh_dim):
@@ -197,7 +198,9 @@ def decompose_smi_graph(smi_graph):
         bond_act_idx = None
         action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
         actions.append(act_idx_to_vect(action_idx))
-        state[jj, jj, :] = smi_graph[jj, jj, :]
+        state[jj, jj, :-1] = smi_graph[jj, jj, :]
+        # once an atom is added, initialize with full valence
+        state[jj, jj, -1] = ATOM_MAX_VALENCE[atom_act_idx]
         states.append(deepcopy(state))
         for ii in range(jj):
             charge_act_idx = None
@@ -208,9 +211,12 @@ def decompose_smi_graph(smi_graph):
                 bond_act_idx = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].argmax()
                 action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
                 actions.append(act_idx_to_vect(action_idx))
-                state[ii, jj, :] = smi_graph[ii, jj, :]
+                state[ii, jj, :-1] = smi_graph[ii, jj, :]
+                # once a bond is added, deduct valence with bond_idx for connected atoms
+                state[ii, ii, -1] -= bond_act_idx
+                state[jj, jj, -1] -= bond_act_idx
                 # ensure symmetry
-                state[jj, ii, :] = smi_graph[ii, jj, :]
+                state[jj, ii, :-1] = smi_graph[ii, jj, :]
                 states.append(deepcopy(state))
 
     return actions, states[:-1]
