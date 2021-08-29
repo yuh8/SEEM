@@ -17,10 +17,6 @@ def unit_test_mol(mol_path="data/data_train.smi"):
         for mol in suppl:
             if not is_mol_valid(mol):
                 continue
-            # charges = [atom.GetFormalCharge() for atom in mol.GetAtoms()]
-            # if any(np.abs(charges) > 2):
-            #     continue
-            mol_original = deepcopy(mol)
             smi_original = Chem.MolToSmiles(mol)
             try:
                 smi_original = standardize_smiles(smi_original)
@@ -34,6 +30,7 @@ def unit_test_mol(mol_path="data/data_train.smi"):
                 # breakpoint()
                 continue
             count_pass += 1
+    print('final pass rate = {}'.format(round(count_pass / count_all, 4)))
 
 
 def unit_test_smiles(smi_path):
@@ -54,16 +51,15 @@ def unit_test_smiles(smi_path):
         count_all += 1
         if (smi_original != smi_reconstructed) and ("[nH]" not in smi_original):
             print("original: {0}, reconstructed: {1}, pass_rate: {2}".format(smi_original, smi_reconstructed, round(count_pass / count_all, 4)))
-            # breakpoint()
             continue
         count_pass += 1
+    print('final pass rate = {}'.format(round(count_pass / count_all, 4)))
 
 
 def test_single(smi_original):
     smi_original = standardize_smiles(smi_original)
     smi_graph, charges = smiles_to_graph(smi_original)
     smi_reconstructed, _ = graph_to_smiles(smi_graph, charges)
-    breakpoint()
     return smi_original == smi_reconstructed
 
 
@@ -96,11 +92,12 @@ def unit_test_chembl(draw=False):
             print("original: {0}, reconstructed: {1}, pass_rate: {2}".format(smi_original, smi_reconstructed, round(count_pass / count_all, 4)))
             continue
         count_pass += 1
+    print('final pass rate = {}'.format(round(count_pass / count_all, 4)))
 
 
 if __name__ == "__main__":
     # print(test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O"))
     # test_decompose_smi_graph("CN1CCCC1")
-    # unit_test_mol()
-    # unit_test_smiles("data/df_train.csv")
+    unit_test_mol()
+    unit_test_smiles("data/df_train.csv")
     unit_test_chembl()
