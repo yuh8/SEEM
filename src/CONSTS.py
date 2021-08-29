@@ -1,7 +1,7 @@
 from rdkit import Chem
 
 
-MAX_NUM_ATOMS = 160
+MAX_NUM_ATOMS = 10
 
 ATOM_FREQ_DICT = {'C': 35467421, 'N': 5330638, 'O': 5173387, 'F': 709638, 'S': 665573,
                   'Cl': 443265, 'Br': 87847, 'P': 27831, 'I': 13015,
@@ -16,8 +16,11 @@ CHARGE_FREQ_DICT = {0: 47681162, 1: 134725, -1: 118658, 3: 532, 2: 252, -2: 3, -
 
 ATOM_LIST = ['H', 'C', 'N', 'O', 'F', 'S', 'Cl', 'Br', 'P', 'I', 'Na', 'B', 'Si', 'Se', 'K']
 
+# https://en.wikipedia.org/wiki/Valence_(chemistry)
+ATOM_MAX_VALENCE = [1, 4, 5, 2, 1, 6, 1, 7, 5, 7, 1, 3, 4, 6, 1]
+
 BOND_DICT = Chem.rdchem.BondType.values
-BOND_NAMES = list(BOND_DICT.values())
+BOND_NAMES = list(BOND_DICT.values())[:4]
 CHARGES = [-1, 0, 1, 2, 3]
 
 FEATURE_DEPTH = len(ATOM_LIST) + len(BOND_NAMES) + len(CHARGES)
