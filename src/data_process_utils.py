@@ -177,7 +177,45 @@ def act_idx_to_vect(action_idx):
 
 
 def get_action_mask_from_state(state):
-    pass
+    '''
+    indicate masking location with value 1
+    '''
+    num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
+    action_vec_mask = get_initial_act_vec()
+    # last column with atom or connection
+    col_state = state.sum(-1).sum(-1)
+    col = col_state[col_state > 0].shape[0] - 1
+    # empty or single atom state do not allow bond creation
+    if col <= 0:
+        action_vec_mask[num_act_charge_actions:] = 1
+        return action_vec_mask
+
+    # if no bond has been created for this col,
+    # do not allow atom_charge creation
+    col_has_bond = state[:col, col].sum() > 0
+    if not col_has_bond:
+        action_vec_mask[:num_act_charge_actions] = 1
+        return action_vec_mask
+
+    # scan until the row above the col number
+    start_idx = num_act_charge_actions
+    for row in range(col):
+        remaining_valence = state[row, col, -1]
+        cell_has_bond = state[row, col, :-1].sum(-1) == 3
+        # if cell has bond, do not allow bond creation
+        if cell_has_bond:
+            mask_start = start_idx + row * len(BOND_NAMES)
+            mask_end = start_idx + (row + 1) * len(BOND_NAMES)
+            action_vec_mask[mask_start:mask_end] = 1
+
+        # do not allow creation of bond exceeding remaining valance
+        has_invalid_bond = (np.range(len(BOND_NAMES)) > remaining_valence).any()
+        if has_invalid_bond:
+            mask_start = start_idx + row * len(BOND_NAMES) + remaining_valence + 1
+            mask_end = start_idx + (row + 1) * len(BOND_NAMES)
+            action_vec_mask[mask_start:mask_end] = 1
+
+    return action_vec_mask
 
 
 def decompose_smi_graph(smi_graph):
@@ -211,12 +249,12 @@ def decompose_smi_graph(smi_graph):
                 bond_act_idx = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].argmax()
                 action_idx = ((atom_act_idx, charge_act_idx), (loc_act_idx, bond_act_idx))
                 actions.append(act_idx_to_vect(action_idx))
+                # ensure symmetry
                 state[ii, jj, :-1] = smi_graph[ii, jj, :]
+                state[jj, ii, :-1] = smi_graph[ii, jj, :]
                 # once a bond is added, deduct valence with bond_idx for connected atoms
                 state[ii, ii, -1] -= bond_act_idx
                 state[jj, jj, -1] -= bond_act_idx
-                # ensure symmetry
-                state[jj, ii, :-1] = smi_graph[ii, jj, :]
                 states.append(deepcopy(state))
 
     return actions, states[:-1]
