@@ -97,7 +97,7 @@ def unit_test_chembl(draw=False):
 
 if __name__ == "__main__":
     # print(test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O"))
-    test_decompose_smi_graph("OC=CC=O")
+    test_decompose_smi_graph("NCC(O)CON")
     # unit_test_mol()
     # unit_test_smiles("data/df_train.csv")
     # unit_test_chembl()
