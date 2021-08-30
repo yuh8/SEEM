@@ -182,12 +182,22 @@ def get_action_mask_from_state(state):
     '''
     num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
     action_vec_mask = get_initial_act_vec()
+
+    # masking all zero bond creation action
+    zero_bond_idx = np.arange(num_act_charge_actions,
+                              action_vec_mask.shape[0],
+                              len(BOND_NAMES))
+    action_vec_mask[zero_bond_idx] = 1
+
     # last column with atom or connection
     col_state = state.sum(-1).sum(-1)
-    col = col_state[col_state > 0].shape[0] - 1
-    # empty or single atom state do not allow bond creation
-    if col <= 0:
-        action_vec_mask[num_act_charge_actions:] = 1
+    col = np.maximum(col_state[col_state > 0].shape[0] - 1, 0)
+
+    # bond creation allowed only in upper triangle
+    action_vec_mask[num_act_charge_actions + col * len(BOND_NAMES):] = 1
+
+    # zero or single atom state allows only atom creation
+    if col == 0:
         return action_vec_mask
 
     # if no bond has been created for this col,
@@ -195,24 +205,27 @@ def get_action_mask_from_state(state):
     col_has_bond = state[:col, col].sum() > 0
     if not col_has_bond:
         action_vec_mask[:num_act_charge_actions] = 1
-        return action_vec_mask
 
     # scan until the row above the col number
     start_idx = num_act_charge_actions
+    remaining_valence_col = state[col, col, -1]
     for row in range(col):
-        remaining_valence = state[row, col, -1]
+        remaining_valence_row = state[row, row, -1]
+        min_remaining_valence = np.minimum(remaining_valence_row,
+                                           remaining_valence_col)
         cell_has_bond = state[row, col, :-1].sum(-1) == 3
         # if cell has bond, do not allow bond creation
         if cell_has_bond:
             mask_start = start_idx + row * len(BOND_NAMES)
             mask_end = start_idx + (row + 1) * len(BOND_NAMES)
             action_vec_mask[mask_start:mask_end] = 1
+            continue
 
-        # do not allow creation of bond exceeding remaining valance
-        has_invalid_bond = (np.range(len(BOND_NAMES)) > remaining_valence).any()
+        # do not allow creation of bond exceeding minimum remaining valance
+        has_invalid_bond = (np.arange(len(BOND_NAMES)) > min_remaining_valence).any()
         if has_invalid_bond:
-            mask_start = start_idx + row * len(BOND_NAMES) + remaining_valence + 1
-            mask_end = start_idx + (row + 1) * len(BOND_NAMES)
+            mask_start = int(start_idx + row * len(BOND_NAMES) + min_remaining_valence + 1)
+            mask_end = int(start_idx + (row + 1) * len(BOND_NAMES))
             action_vec_mask[mask_start:mask_end] = 1
 
     return action_vec_mask
@@ -223,6 +236,7 @@ def decompose_smi_graph(smi_graph):
     gragh_dim = con_graph.shape[0]
     # last feature dim tracks the remaining valence
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
+    get_action_mask_from_state(state)
     states = [deepcopy(state)]
     actions = []
     for jj in range(gragh_dim):
@@ -239,6 +253,7 @@ def decompose_smi_graph(smi_graph):
         state[jj, jj, :-1] = smi_graph[jj, jj, :]
         # once an atom is added, initialize with full valence
         state[jj, jj, -1] = ATOM_MAX_VALENCE[atom_act_idx]
+        get_action_mask_from_state(state)
         states.append(deepcopy(state))
         for ii in range(jj):
             charge_act_idx = None
@@ -255,6 +270,7 @@ def decompose_smi_graph(smi_graph):
                 # once a bond is added, deduct valence with bond_idx for connected atoms
                 state[ii, ii, -1] -= bond_act_idx
                 state[jj, jj, -1] -= bond_act_idx
+                get_action_mask_from_state(state)
                 states.append(deepcopy(state))
 
     return actions, states[:-1]
