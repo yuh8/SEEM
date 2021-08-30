@@ -236,13 +236,14 @@ def decompose_smi_graph(smi_graph):
     gragh_dim = con_graph.shape[0]
     # last feature dim tracks the remaining valence
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
-    get_action_mask_from_state(state)
+    mask = get_action_mask_from_state(state)
     states = [deepcopy(state)]
+    masks = [mask]
     actions = []
     for jj in range(gragh_dim):
         # terminate
         if sum(smi_graph[jj, jj, :]) == 0:
-            return actions, states[:-1]
+            return actions, masks[:-1], states[:-1]
         # adding atom and charge
         atom_act_idx = smi_graph[jj, jj, :len(ATOM_LIST)].argmax()
         charge_act_idx = smi_graph[jj, jj, -len(CHARGES):].argmax()
@@ -253,8 +254,9 @@ def decompose_smi_graph(smi_graph):
         state[jj, jj, :-1] = smi_graph[jj, jj, :]
         # once an atom is added, initialize with full valence
         state[jj, jj, -1] = ATOM_MAX_VALENCE[atom_act_idx]
-        get_action_mask_from_state(state)
+        mask = get_action_mask_from_state(state)
         states.append(deepcopy(state))
+        masks.append(mask)
         for ii in range(jj):
             charge_act_idx = None
             atom_act_idx = None
@@ -270,10 +272,11 @@ def decompose_smi_graph(smi_graph):
                 # once a bond is added, deduct valence with bond_idx for connected atoms
                 state[ii, ii, -1] -= bond_act_idx
                 state[jj, jj, -1] -= bond_act_idx
-                get_action_mask_from_state(state)
+                mask = get_action_mask_from_state(state)
                 states.append(deepcopy(state))
+                masks.append(mask)
 
-    return actions, states[:-1]
+    return actions, masks[:-1], states[:-1]
 
 
 if __name__ == "__main__":

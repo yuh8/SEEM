@@ -31,41 +31,55 @@ def save_data_batch(raw_data_path, dest_data_path):
     df_val = pd.read_csv(raw_data_path)
     x = []
     y = []
+    x_mask = []
     batch = 0
     for _, row in df_val.iterrows():
         try:
             smi_graph, _ = smiles_to_graph(row.Smiles)
         except:
             continue
-        actions, states = decompose_smi_graph(smi_graph)
+        actions, masks, states = decompose_smi_graph(smi_graph)
         x.extend(states)
+        x_mask.extend(masks)
         y.extend(actions)
         if len(x) >= BATCH_SIZE:
             _X = sp.COO(np.stack(x[:BATCH_SIZE]))
+            _X_mask = sp.COO(np.vstack(x_mask[:BATCH_SIZE]))
             _y = sp.COO(np.vstack(y[:BATCH_SIZE]))
-            _data = (_X, _y)
+            _data = ((_X, _X_mask), _y)
             with open(dest_data_path + 'Xy_{}.pkl'.format(batch), 'wb') as f:
                 pickle.dump(_data, f)
             x = x[BATCH_SIZE:]
+            x_mask = x_mask[BATCH_SIZE:]
             y = y[BATCH_SIZE:]
             batch += 1
 
     if x:
-        _X = sp.COO(np.stack(x[:BATCH_SIZE]))
-        _y = sp.COO(np.vstack(y[:BATCH_SIZE]))
-        _data = (_X, _y)
+        _X = sp.COO(np.stack(x))
+        _X_mask = sp.COO(np.vstack(x_mask))
+        _y = sp.COO(np.vstack(y))
+        _data = ((_X, _X_mask), _y)
         with open(dest_data_path + 'Xy_{}.pkl'.format(batch), 'wb') as f:
             pickle.dump(_data, f)
 
 
 def data_iterator(data_path):
+    num_files = len(glob.glob(data_path + 'Xy_*.pkl'))
+    batch_nums = np.arange(num_files)
     while True:
-        for f_name in glob.glob(data_path + 'Xy_*.pkl'):
+        np.random.shuffle(batch_nums)
+        for batch in batch_nums:
+            f_name = data_path + 'Xy_{}.pkl'.format(batch)
             with open(f_name, 'rb') as handle:
                 Xy = pickle.load(handle)
-                X = Xy[0].todense()
-                y = Xy[1].todense()
-                yield X, y
+
+            X = (Xy[0][0].todense(), Xy[0][1].todense())
+            y = Xy[1].todense()
+            sample_nums = np.arange(y.shape[0])
+            np.random.shuffle(sample_nums)
+            X = (X[0][sample_nums, ...], X[1][sample_nums, ...])
+            y = y[sample_nums, :]
+            yield X, y
 
 
 if __name__ == "__main__":
