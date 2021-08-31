@@ -17,10 +17,10 @@ def get_train_val_test_data():
 
     # train, val, test split
     df_train, df_test \
-        = train_test_split(df_data, test_size=0.1, random_state=43)
+        = train_test_split(df_data, test_size=0.01, random_state=43)
 
     df_train, df_val \
-        = train_test_split(df_train, test_size=0.05, random_state=43)
+        = train_test_split(df_train, test_size=0.01, random_state=43)
 
     df_train.to_csv('D:/seed_data/generator/train_data/df_train.csv', index=False)
     df_test.to_csv('D:/seed_data/generator/test_data/df_test.csv', index=False)
@@ -28,12 +28,13 @@ def get_train_val_test_data():
 
 
 def save_data_batch(raw_data_path, dest_data_path):
-    df_val = pd.read_csv(raw_data_path)
+    df = pd.read_csv(raw_data_path)
+    df = df.sample(frac=1).reset_index(drop=True)
     x = []
     y = []
     x_mask = []
     batch = 0
-    for _, row in df_val.iterrows():
+    for idx, row in df.iterrows():
         try:
             smi_graph, _ = smiles_to_graph(row.Smiles)
         except:
@@ -42,7 +43,7 @@ def save_data_batch(raw_data_path, dest_data_path):
         x.extend(states)
         x_mask.extend(masks)
         y.extend(actions)
-        if len(x) >= BATCH_SIZE:
+        while len(x) > BATCH_SIZE:
             _X = sp.COO(np.stack(x[:BATCH_SIZE]))
             _X_mask = sp.COO(np.vstack(x_mask[:BATCH_SIZE]))
             _y = sp.COO(np.vstack(y[:BATCH_SIZE]))
@@ -53,6 +54,11 @@ def save_data_batch(raw_data_path, dest_data_path):
             x_mask = x_mask[BATCH_SIZE:]
             y = y[BATCH_SIZE:]
             batch += 1
+            if batch >= 400000:
+                break
+        if batch >= 400000:
+            break
+        print('{}/{} molecules done'.format(idx, df.shape[0]))
 
     if x:
         _X = sp.COO(np.stack(x))
@@ -80,6 +86,20 @@ def data_iterator(data_path):
             X = (X[0][sample_nums, ...], X[1][sample_nums, ...])
             y = y[sample_nums, :]
             yield X, y
+
+
+def data_iterator_test(test_path):
+    for f_name in glob.glob(test_path + 'Xy_*.pkl'):
+        with open(f_name, 'rb') as handle:
+            Xy = pickle.load(handle)
+
+        X = (Xy[0][0].todense(), Xy[0][1].todense())
+        y = Xy[1].todense()
+        sample_nums = np.arange(y.shape[0])
+        np.random.shuffle(sample_nums)
+        X = (X[0][sample_nums, ...], X[1][sample_nums, ...])
+        y = y[sample_nums, :]
+        yield X, y
 
 
 if __name__ == "__main__":
