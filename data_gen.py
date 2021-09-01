@@ -54,9 +54,9 @@ def save_data_batch(raw_data_path, dest_data_path):
             x_mask = x_mask[BATCH_SIZE:]
             y = y[BATCH_SIZE:]
             batch += 1
-            if batch >= 400000:
+            if batch >= 1000000:
                 break
-        if batch >= 400000:
+        if batch >= 1000000:
             break
         print('{}/{} molecules done'.format(idx, df.shape[0]))
 
