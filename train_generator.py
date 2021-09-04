@@ -1,5 +1,4 @@
 import glob
-from token import NUMBER
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -72,7 +71,7 @@ def get_metrics():
 
 
 def loss_func(y_true, y_pred):
-    loss_obj = keras.losses.CategoricalCrossentropy(from_logits=True, axis=-1)
+    loss_obj = keras.losses.CategoricalCrossentropy(from_logits=True)
     loss = loss_obj(y_true, y_pred)
     return loss
 
