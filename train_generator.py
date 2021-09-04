@@ -1,5 +1,7 @@
 import glob
+from token import NUMBER
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras import layers
 from multiprocessing import freeze_support
 from data_gen import data_iterator, data_iterator_test
@@ -26,46 +28,52 @@ def core_model():
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
+    # out = conv2d_block(out, NUM_FILTERS, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
+    # out = conv2d_block(out, NUM_FILTERS * 2, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
+    # out = conv2d_block(out, NUM_FILTERS, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
+    # out = conv2d_block(out, NUM_FILTERS * 2, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    # [BATCH, MAX_NUM_ATOMS/32, MAX_NUM_ATOMS/32, ACTION_SIZE]
-    out = layers.Conv2D(num_act_charge_actions + num_loc_bond_actions,
-                        kernel_size=1,
-                        strides=1,
-                        padding='SAME',
-                        activation=None,
-                        use_bias=False)(out)
+    # # [BATCH, MAX_NUM_ATOMS/32, MAX_NUM_ATOMS/32, ACTION_SIZE]
+    # out = layers.Conv2D(NUM_FILTERS,
+    #                     kernel_size=1,
+    #                     strides=1,
+    #                     padding='SAME',
+    #                     activation=None,
+    #                     use_bias=False)(out)
 
-    action_logits = tf.reduce_max(out, axis=(1, 2))
+    out = layers.GlobalAveragePooling2D()(out)
+    action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
+                                 activation=None,
+                                 use_bias=False)(out)
     mask = tf.cast(X_mask, action_logits.dtype)
-    action_logits -= mask * 1e-9
-    action = tf.nn.softmax(action_logits, axis=-1)
-    return X, X_mask, action
+    action_logits += (mask * -1e9)
+    return X, X_mask, action_logits
 
 
 def get_metrics():
-    train_auc = tf.keras.metrics.AUC(name="train_auc")
-    val_auc = tf.keras.metrics.AUC(name="val_auc")
-    return train_auc, val_auc
+    train_act_acc = tf.keras.metrics.CategoricalAccuracy(name="train_act_acc")
+    val_act_acc = tf.keras.metrics.CategoricalAccuracy(name="val_act_acc")
+    return train_act_acc, val_act_acc
 
 
 def loss_func(y_true, y_pred):
-    loss = tf.keras.losses.categorical_crossentropy(y_true, y_pred, from_logits=False)
-    loss = tf.reduce_mean(loss)
+    loss_obj = keras.losses.CategoricalCrossentropy(from_logits=True, axis=-1)
+    loss = loss_obj(y_true, y_pred)
     return loss
 
 
@@ -81,6 +89,47 @@ def get_optimizer(finetune=False):
     return opt_op
 
 
+class SeedGenerator(keras.Model):
+    def compile(self, optimizer, loss_fn, metric_fn):
+        super(SeedGenerator, self).compile()
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
+        self.train_act_acc, self.val_act_acc = metric_fn()
+
+    def train_step(self, train_data):
+        X, y = train_data
+
+        # capture the scope of gradient
+        with tf.GradientTape() as tape:
+            logits = self(X, training=True)
+            loss = self.loss_fn(y, logits)
+
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+
+        # Update weights
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+
+        # compute metrics keeping an moving average
+        self.train_act_acc.update_state(y, logits)
+        return {"train_act_acc": self.train_act_acc.result()}
+
+    def test_step(self, val_data):
+        X, y = val_data
+
+        # predict
+        logits = self(X, training=False)
+        # compute metrics stateless
+        self.val_act_acc.update_state(y, logits)
+        return {"val_act_acc": self.val_act_acc.result()}
+
+    @property
+    def metrics(self):
+        # clear metrics after every epoch
+        return [self.train_act_acc, self.val_act_acc]
+
+
 if __name__ == "__main__":
     freeze_support()
     ckpt_path = 'checkpoints/generator/'
@@ -92,24 +141,26 @@ if __name__ == "__main__":
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
-                                                    monitor='loss',
-                                                    mode='min',
+                                                    monitor='train_act_acc',
+                                                    mode='max',
                                                     save_best_only=True)]
     steps_per_epoch = len(glob.glob(train_path + 'Xy_*.pkl'))
     val_steps = len(glob.glob(val_path + 'Xy_*.pkl'))
     # train
     X, X_mask, action = core_model()
-    model = tf.keras.Model([X, X_mask], action)
+    model = SeedGenerator([X, X_mask], action)
     model.compile(optimizer=get_optimizer(),
-                  loss=loss_func)
+                  loss_fn=loss_func,
+                  metric_fn=get_metrics)
+    save_model_to_json(model, "generator_model/generator_model.json")
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=2,
+              epochs=1,
               validation_data=data_iterator_test(val_path),
-              validation_steps=val_steps,
+              validation_steps=10000,
               callbacks=callbacks,
-              steps_per_epoch=steps_per_epoch)
+              steps_per_epoch=20000)
     res = model.evaluate(data_iterator_test(test_path),
                          return_dict=True)
 
@@ -117,10 +168,11 @@ if __name__ == "__main__":
     model.save("generator_full_model/", include_optimizer=False)
     model.save_weights("./generator_weights/generator")
 
-    save_model_to_json(model, "generator_model/generator_model.json")
-    model_new = load_json_model("generator_model/generator_model.json")
-    model_new.compile(optimizer=get_optimizer(),
-                      loss=loss_func)
+    model_new = load_json_model("generator_model/generator_model.json",
+                                SeedGenerator, "SeedGenerator")
+    model.compile(optimizer=get_optimizer(),
+                  loss_fn=loss_func,
+                  metric_fn=get_metrics)
     model_new.load_weights("./generator_weights/generator")
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)

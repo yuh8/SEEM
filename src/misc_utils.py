@@ -17,8 +17,12 @@ def save_model_to_json(model, model_path):
         json.dump(model_json, json_file)
 
 
-def load_json_model(model_path):
+def load_json_model(model_path, custom_obj=None, custom_obj_name=None):
     with open("{}".format(model_path)) as json_file:
         model_json = json.load(json_file)
-    uncompiled_model = tf.keras.models.model_from_json(model_json)
+    if custom_obj is not None:
+        uncompiled_model = tf.keras.models.model_from_json(model_json,
+                                                           {custom_obj_name: custom_obj})
+    else:
+        uncompiled_model = tf.keras.models.model_from_json(model_json)
     return uncompiled_model
