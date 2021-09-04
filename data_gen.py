@@ -74,6 +74,7 @@ def data_iterator(data_path):
     batch_nums = np.arange(num_files)
     while True:
         np.random.shuffle(batch_nums)
+        print(batch_nums[:-20])
         for batch in batch_nums:
             f_name = data_path + 'Xy_{}.pkl'.format(batch)
             with open(f_name, 'rb') as handle:
@@ -83,23 +84,16 @@ def data_iterator(data_path):
             y = Xy[1].todense()
             sample_nums = np.arange(y.shape[0])
             np.random.shuffle(sample_nums)
-            X = (X[0][sample_nums, ...], X[1][sample_nums, ...])
-            y = y[sample_nums, :]
-            yield X, y
+            yield ((X[0][sample_nums, ...], X[1][sample_nums, ...]),
+                   y[sample_nums, :])
 
 
 def data_iterator_test(test_path):
     for f_name in glob.glob(test_path + 'Xy_*.pkl'):
         with open(f_name, 'rb') as handle:
             Xy = pickle.load(handle)
-
-        X = (Xy[0][0].todense(), Xy[0][1].todense())
-        y = Xy[1].todense()
-        sample_nums = np.arange(y.shape[0])
-        np.random.shuffle(sample_nums)
-        X = (X[0][sample_nums, ...], X[1][sample_nums, ...])
-        y = y[sample_nums, :]
-        yield X, y
+        yield ((Xy[0][0].todense(), Xy[0][1].todense()),
+               Xy[1].todense())
 
 
 if __name__ == "__main__":
