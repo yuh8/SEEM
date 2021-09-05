@@ -16,7 +16,7 @@ def core_model():
     X = layers.Input(shape=(MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
     num_loc_bond_actions = (MAX_NUM_ATOMS - 1) * len(BOND_NAMES)
-    X_mask = layers.Input(shape=(num_act_charge_actions + num_loc_bond_actions))
+    # X_mask = layers.Input(shape=(num_act_charge_actions + num_loc_bond_actions))
 
     # [BATCH, MAX_NUM_ATOMS, MAX_NUM_ATOMS, NUM_FILTERS]
     out = conv2d_block(X, NUM_FILTERS, FILTER_SIZE)
@@ -47,15 +47,19 @@ def core_model():
     action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
                                  activation=None,
                                  use_bias=False)(out)
-    mask = tf.cast(X_mask, action_logits.dtype)
-    action_logits += (mask * -1e9)
-    return X, X_mask, action_logits
+    # mask = tf.cast(X_mask, action_logits.dtype)
+    # action_logits += (mask * -1e9)
+    return X, action_logits
 
 
 def get_metrics():
     train_act_acc = tf.keras.metrics.CategoricalAccuracy(name="train_act_acc")
     val_act_acc = tf.keras.metrics.CategoricalAccuracy(name="val_act_acc")
-    return train_act_acc, val_act_acc
+    train_loss = tf.keras.metrics.CategoricalCrossentropy(name='train_loss',
+                                                          from_logits=False)
+    val_loss = tf.keras.metrics.CategoricalCrossentropy(name='val_loss',
+                                                        from_logits=False)
+    return train_act_acc, val_act_acc, train_loss, val_loss
 
 
 def loss_func(y_true, y_pred):
@@ -81,7 +85,8 @@ class SeedGenerator(keras.Model):
         super(SeedGenerator, self).compile()
         self.optimizer = optimizer
         self.loss_fn = loss_fn
-        self.train_act_acc, self.val_act_acc = metric_fn()
+        self.train_act_acc, self.val_act_acc, \
+            self.train_loss, self.val_loss = metric_fn()
 
     def train_step(self, train_data):
         X, y = train_data
@@ -100,16 +105,21 @@ class SeedGenerator(keras.Model):
 
         # compute metrics keeping an moving average
         self.train_act_acc.update_state(y, logits)
-        return {"train_act_acc": self.train_act_acc.result()}
+        self.train_loss.update_state(y, logits)
+        return {"train_act_acc": self.train_act_acc.result(),
+                "train_loss": loss}
 
     def test_step(self, val_data):
         X, y = val_data
 
         # predict
         logits = self(X, training=False)
+        y_pred = tf.nn.softmax(logits, axis=-1)
         # compute metrics stateless
         self.val_act_acc.update_state(y, logits)
-        return {"val_act_acc": self.val_act_acc.result()}
+        self.val_loss.update_state(y, y_pred)
+        return {"val_act_acc": self.val_act_acc.result(),
+                "val_loss": self.val_loss.result()}
 
     @property
     def metrics(self):
@@ -134,8 +144,8 @@ if __name__ == "__main__":
     steps_per_epoch = len(glob.glob(train_path + 'Xy_*.pkl'))
     val_steps = len(glob.glob(val_path + 'Xy_*.pkl'))
     # train
-    X, X_mask, action = core_model()
-    model = SeedGenerator([X, X_mask], action)
+    X, action_logits = core_model()
+    model = SeedGenerator(X, action_logits)
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
@@ -143,11 +153,11 @@ if __name__ == "__main__":
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=1,
+              epochs=3,
               validation_data=data_iterator_test(val_path),
-              validation_steps=10000,
+              validation_steps=val_steps,
               callbacks=callbacks,
-              steps_per_epoch=40000)
+              steps_per_epoch=steps_per_epoch)
     res = model.evaluate(data_iterator_test(test_path),
                          return_dict=True)
 
