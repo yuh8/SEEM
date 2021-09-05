@@ -153,8 +153,8 @@ if __name__ == "__main__":
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=3,
-              validation_data=data_iterator_test(val_path),
+              epochs=1,
+              validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
               steps_per_epoch=steps_per_epoch)
