@@ -27,33 +27,21 @@ def core_model():
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    # out = conv2d_block(out, NUM_FILTERS, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    # out = conv2d_block(out, NUM_FILTERS * 2, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    # out = conv2d_block(out, NUM_FILTERS, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    # out = conv2d_block(out, NUM_FILTERS * 2, FILTER_SIZE)
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
-
-    # # [BATCH, MAX_NUM_ATOMS/32, MAX_NUM_ATOMS/32, ACTION_SIZE]
-    # out = layers.Conv2D(NUM_FILTERS,
-    #                     kernel_size=1,
-    #                     strides=1,
-    #                     padding='SAME',
-    #                     activation=None,
-    #                     use_bias=False)(out)
 
     out = layers.GlobalAveragePooling2D()(out)
     action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
@@ -159,7 +147,7 @@ if __name__ == "__main__":
               validation_data=data_iterator_test(val_path),
               validation_steps=10000,
               callbacks=callbacks,
-              steps_per_epoch=20000)
+              steps_per_epoch=40000)
     res = model.evaluate(data_iterator_test(test_path),
                          return_dict=True)
 
