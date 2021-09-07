@@ -17,6 +17,7 @@ if __name__ == "__main__":
     for X_in, y in data_iterator(test_path):
         with tf.device('/cpu:0'):
             y_pred = model.predict(X_in)
+        print(np.vstack((y_pred.argmax(-1), y.argmax(-1))))
         mask = np.where(X_in[1][0] < 1)
         input = X_in[:10, :10, :-1].sum(-1)
         breakpoint()

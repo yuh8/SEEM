@@ -107,7 +107,7 @@ class SeedGenerator(keras.Model):
         self.train_act_acc.update_state(y, logits)
         self.train_loss.update_state(y, logits)
         return {"train_act_acc": self.train_act_acc.result(),
-                "train_loss": loss}
+                "train_loss": self.train_loss.result()}
 
     def test_step(self, val_data):
         X, y = val_data
@@ -124,7 +124,8 @@ class SeedGenerator(keras.Model):
     @property
     def metrics(self):
         # clear metrics after every epoch
-        return [self.train_act_acc, self.val_act_acc]
+        return [self.train_act_acc, self.val_act_acc,
+                self.train_loss, self.val_loss]
 
 
 if __name__ == "__main__":
@@ -167,9 +168,9 @@ if __name__ == "__main__":
 
     model_new = load_json_model("generator_model/generator_model.json",
                                 SeedGenerator, "SeedGenerator")
-    model.compile(optimizer=get_optimizer(),
-                  loss_fn=loss_func,
-                  metric_fn=get_metrics)
+    model_new.compile(optimizer=get_optimizer(),
+                      loss_fn=loss_func,
+                      metric_fn=get_metrics)
     model_new.load_weights("./generator_weights/generator")
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)
