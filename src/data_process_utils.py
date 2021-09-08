@@ -114,7 +114,7 @@ def smiles_to_graph(smi):
             smi_graph[ii, jj, :] = feature_vec
             smi_graph[jj, ii, :] = feature_vec
 
-    return smi_graph, charges
+    return smi_graph
 
 
 def update_atom_property(mol, charges):
@@ -146,13 +146,13 @@ def graph_to_smiles(smi_graph):
 
             if (con_graph[ii, jj] == 3) and \
                     (ii in atoms.keys()) and (jj in atoms.keys()):
-                bond_feature_vec = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)].astype(int)
+                bond_feature_vec = smi_graph[ii, jj, len(ATOM_LIST):-len(CHARGES)]
                 bond_type = BOND_NAMES[bond_feature_vec.argmax()]
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
     smi = Chem.MolToSmiles(mol, isomericSmiles=False)
-    return smi, mol
+    return smi
 
 
 def get_initial_act_vec():
@@ -181,7 +181,7 @@ def act_idx_to_vect(action_idx):
 
 
 def get_last_col_with_atom(state):
-    # last column with atom or connection
+    # last column with atom
     col_state = state.sum(-1).sum(-1)
     col = np.maximum(col_state[col_state > 0].shape[0] - 1, 0)
     return col
@@ -200,10 +200,8 @@ def get_action_mask_from_state(state):
                               len(BOND_NAMES))
     action_vec_mask[zero_bond_idx] = 1
 
-    # last column with atom or connection
-    col = get_last_col_with_atom(state)
-
     # bond creation allowed only in upper triangle
+    col = get_last_col_with_atom(state)
     action_vec_mask[num_act_charge_actions + col * len(BOND_NAMES):] = 1
 
     # zero or single atom state allows only atom creation
@@ -242,8 +240,7 @@ def get_action_mask_from_state(state):
 
 
 def decompose_smi_graph(smi_graph):
-    con_graph = np.sum(smi_graph, axis=-1)
-    gragh_dim = con_graph.shape[0]
+    gragh_dim = smi_graph.shape[0]
     # last feature dim tracks the remaining valence
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     states = [deepcopy(state)]

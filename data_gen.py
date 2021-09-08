@@ -35,7 +35,7 @@ def save_data_batch(raw_data_path, dest_data_path):
     batch = 0
     for idx, row in df.iterrows():
         try:
-            smi_graph, _ = smiles_to_graph(row.Smiles)
+            smi_graph = smiles_to_graph(row.Smiles)
         except:
             continue
         actions, states = decompose_smi_graph(smi_graph)
@@ -69,7 +69,6 @@ def data_iterator(data_path):
     batch_nums = np.arange(num_files)
     while True:
         np.random.shuffle(batch_nums)
-        print(batch_nums[:10])
         for batch in batch_nums:
             f_name = data_path + 'Xy_{}.pkl'.format(batch)
             with open(f_name, 'rb') as handle:

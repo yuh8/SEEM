@@ -4,11 +4,12 @@ from rdkit.Chem.Descriptors import qed
 from scipy.special import softmax
 from train_generator import loss_func, get_metrics, get_optimizer, SeedGenerator
 from src.data_process_utils import (get_action_mask_from_state,
+                                    standardize_smiles_to_mol,
                                     get_last_col_with_atom, draw_smiles,
                                     get_initial_act_vec, graph_to_smiles)
 from src.misc_utils import create_folder, load_json_model
 from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
-                        FEATURE_DEPTH,
+                        MIN_NUM_ATOMS, FEATURE_DEPTH,
                         ATOM_MAX_VALENCE,
                         ATOM_LIST, CHARGES)
 
@@ -70,8 +71,8 @@ def update_state_with_action(action_logits, state, num_atoms):
     return state, is_terminate
 
 
-def generate_smiles(model, max_num_atoms, gen_idx):
-    num_atoms = np.random.randint(9, max_num_atoms + 1)
+def generate_smiles(model, gen_idx):
+    num_atoms = np.random.randint(MIN_NUM_ATOMS, MAX_NUM_ATOMS)
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     is_terminate = False
 
@@ -81,7 +82,8 @@ def generate_smiles(model, max_num_atoms, gen_idx):
         state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
-    smi, mol = graph_to_smiles(smi_graph)
+    smi = graph_to_smiles(smi_graph)
+    mol = standardize_smiles_to_mol(smi)
     draw_smiles(smi, "gen_samples/gen_sample_{}".format(gen_idx))
     print('Smiles: {} with QED {}'.format(smi, qed(mol)))
     qed_score = qed(mol)
@@ -100,7 +102,7 @@ if __name__ == "__main__":
     for idx in range(10000):
         gen_sample = {}
         try:
-            smi, qed_score = generate_smiles(model, 36, idx)
+            smi, qed_score = generate_smiles(model, idx)
         except:
             continue
 

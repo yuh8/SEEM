@@ -22,8 +22,8 @@ def unit_test_mol(mol_path="data/data_train.smi"):
                 smi_original = standardize_smiles(smi_original)
             except:
                 continue
-            smi_graph, charges = smiles_to_graph(smi_original)
-            smi_reconstructed, mol = graph_to_smiles(smi_graph, charges)
+            smi_graph = smiles_to_graph(smi_original)
+            smi_reconstructed = graph_to_smiles(smi_graph)
             count_all += 1
             if (smi_original != smi_reconstructed) and ("[nH]" not in smi_original):
                 print("original: {0}, reconstructed: {1}, pass_rate: {2}".format(smi_original, smi_reconstructed, round(count_pass / count_all, 4)))
@@ -46,8 +46,8 @@ def unit_test_smiles(smi_path):
         except:
             continue
 
-        smi_graph, charges = smiles_to_graph(smi_original)
-        smi_reconstructed, _ = graph_to_smiles(smi_graph, charges)
+        smi_graph = smiles_to_graph(smi_original)
+        smi_reconstructed = graph_to_smiles(smi_graph)
         count_all += 1
         if (smi_original != smi_reconstructed) and ("[nH]" not in smi_original):
             print("original: {0}, reconstructed: {1}, pass_rate: {2}".format(smi_original, smi_reconstructed, round(count_pass / count_all, 4)))
@@ -58,13 +58,13 @@ def unit_test_smiles(smi_path):
 
 def test_single(smi_original):
     smi_original = standardize_smiles(smi_original)
-    smi_graph, charges = smiles_to_graph(smi_original)
-    smi_reconstructed, _ = graph_to_smiles(smi_graph, charges)
+    smi_graph = smiles_to_graph(smi_original)
+    smi_reconstructed = graph_to_smiles(smi_graph)
     return smi_original == smi_reconstructed
 
 
 def test_decompose_smi_graph(smi_original):
-    smi_graph, _ = smiles_to_graph(smi_original)
+    smi_graph = smiles_to_graph(smi_original)
     decompose_smi_graph(smi_graph)
 
 
@@ -82,8 +82,8 @@ def unit_test_chembl(draw=False):
         except:
             continue
 
-        smi_graph, charges = smiles_to_graph(smi_original)
-        smi_reconstructed, _ = graph_to_smiles(smi_graph, charges)
+        smi_graph = smiles_to_graph(smi_original)
+        smi_reconstructed = graph_to_smiles(smi_graph)
         count_all += 1
         if (smi_original != smi_reconstructed) and ("[nH]" not in smi_original):
             if draw:
@@ -97,7 +97,7 @@ def unit_test_chembl(draw=False):
 
 if __name__ == "__main__":
     # print(test_single("COC(=O)CCCCC(CCSS/C(CCO)=C(\C)N(C=O)Cc1cnc(C)nc1N)SC(C)=O"))
-    test_decompose_smi_graph("NCC(O)CON")
+    # test_decompose_smi_graph("NCC(O)CON")
     # unit_test_mol()
     # unit_test_smiles("data/df_train.csv")
-    # unit_test_chembl()
+    unit_test_chembl()
