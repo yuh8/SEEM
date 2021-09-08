@@ -43,7 +43,7 @@ def core_model():
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
     out = layers.MaxPool2D(2, 2)(out)
 
-    out = layers.GlobalAveragePooling2D()(out)
+    out = layers.GlobalMaxPooling2D()(out)
     action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
                                  activation=None,
                                  use_bias=False)(out)
