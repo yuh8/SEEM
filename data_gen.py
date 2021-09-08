@@ -32,26 +32,22 @@ def save_data_batch(raw_data_path, dest_data_path):
     df = df.sample(frac=1).reset_index(drop=True)
     x = []
     y = []
-    x_mask = []
     batch = 0
     for idx, row in df.iterrows():
         try:
             smi_graph, _ = smiles_to_graph(row.Smiles)
         except:
             continue
-        actions, masks, states = decompose_smi_graph(smi_graph)
+        actions, states = decompose_smi_graph(smi_graph)
         x.extend(states)
-        x_mask.extend(masks)
         y.extend(actions)
         while len(x) > BATCH_SIZE:
             _X = sp.COO(np.stack(x[:BATCH_SIZE]))
-            _X_mask = sp.COO(np.vstack(x_mask[:BATCH_SIZE]))
             _y = sp.COO(np.vstack(y[:BATCH_SIZE]))
-            _data = ((_X, _X_mask), _y)
+            _data = (_X, _y)
             with open(dest_data_path + 'Xy_{}.pkl'.format(batch), 'wb') as f:
                 pickle.dump(_data, f)
             x = x[BATCH_SIZE:]
-            x_mask = x_mask[BATCH_SIZE:]
             y = y[BATCH_SIZE:]
             batch += 1
             if batch >= 1000000:
@@ -62,9 +58,8 @@ def save_data_batch(raw_data_path, dest_data_path):
 
     if x:
         _X = sp.COO(np.stack(x))
-        _X_mask = sp.COO(np.vstack(x_mask))
         _y = sp.COO(np.vstack(y))
-        _data = ((_X, _X_mask), _y)
+        _data = (_X, _y)
         with open(dest_data_path + 'Xy_{}.pkl'.format(batch), 'wb') as f:
             pickle.dump(_data, f)
 
@@ -80,18 +75,18 @@ def data_iterator(data_path):
             with open(f_name, 'rb') as handle:
                 Xy = pickle.load(handle)
 
-            X = (Xy[0][0].todense(), Xy[0][1].todense())
+            X = Xy[0].todense()
             y = Xy[1].todense()
             sample_nums = np.arange(y.shape[0])
             np.random.shuffle(sample_nums)
-            yield X[0][sample_nums, ...], y[sample_nums, :]
+            yield X[sample_nums, ...], y[sample_nums, :]
 
 
 def data_iterator_test(test_path):
     for f_name in glob.glob(test_path + 'Xy_*.pkl'):
         with open(f_name, 'rb') as handle:
             Xy = pickle.load(handle)
-        yield Xy[0][0].todense(), Xy[1].todense()
+        yield Xy[0].todense(), Xy[1].todense()
 
 
 if __name__ == "__main__":
