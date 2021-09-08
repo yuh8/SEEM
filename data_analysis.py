@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from rdkit import RDLogger
-from src.data_process_utils import is_smile_valid, standardize_smiles, standardize_smiles_to_mol
+from src.data_process_utils import (is_smile_valid,
+                                    standardize_smiles,
+                                    standardize_smiles_to_mol,
+                                    smiles_to_graph,
+                                    decompose_smi_graph)
 from src.CONSTS import (ATOM_LIST, BOND_NAMES)
 RDLogger.DisableLog('rdApp.*')
 
@@ -54,17 +58,36 @@ def get_unique_elements_stats():
     return Counter(elements)
 
 
-if __name__ == "__main__":
-    get_unique_elements_stats()
+def get_number_atoms_stats():
     df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
-    bond_summary_matrix = np.zeros((len(ATOM_LIST), len(BOND_NAMES) + 1))
-    count = 0
-    for _, row in df_data.iterrows():
-        matrix = get_bond_sum_for_each_atom(row.Smiles)
-        if matrix is None:
+    num_elements_list = []
+    for idx, row in df_data.iterrows():
+        smi = row.Smiles
+        try:
+            smi = standardize_smiles(smi)
+            mol = standardize_smiles_to_mol(smi)
+            num_elements = len([atom.GetSymbol() for atom in mol.GetAtoms()])
+            num_elements_list.append(num_elements)
+        except:
             continue
+        print("{}/{} done".format(idx, df_data.shape[0]))
 
-        bond_summary_matrix += matrix
-        count += 1
-        if count % 10000 == 0:
-            print(bond_summary_matrix.sum(0))
+    return num_elements_list
+
+
+if __name__ == "__main__":
+    num_elements_list = get_number_atoms_stats()
+    breakpoint()
+    # get_unique_elements_stats()
+    # df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
+    # bond_summary_matrix = np.zeros((len(ATOM_LIST), len(BOND_NAMES) + 1))
+    # count = 0
+    # for _, row in df_data.iterrows():
+    #     matrix = get_bond_sum_for_each_atom(row.Smiles)
+    #     if matrix is None:
+    #         continue
+
+    #     bond_summary_matrix += matrix
+    #     count += 1
+    #     if count % 10000 == 0:
+    #         print(bond_summary_matrix.sum(0))

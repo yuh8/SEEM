@@ -47,8 +47,6 @@ def core_model():
     action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
                                  activation=None,
                                  use_bias=False)(out)
-    # mask = tf.cast(X_mask, action_logits.dtype)
-    # action_logits += (mask * -1e9)
     return X, action_logits
 
 
@@ -56,9 +54,9 @@ def get_metrics():
     train_act_acc = tf.keras.metrics.CategoricalAccuracy(name="train_act_acc")
     val_act_acc = tf.keras.metrics.CategoricalAccuracy(name="val_act_acc")
     train_loss = tf.keras.metrics.CategoricalCrossentropy(name='train_loss',
-                                                          from_logits=False)
+                                                          from_logits=True)
     val_loss = tf.keras.metrics.CategoricalCrossentropy(name='val_loss',
-                                                        from_logits=False)
+                                                        from_logits=True)
     return train_act_acc, val_act_acc, train_loss, val_loss
 
 
@@ -114,10 +112,9 @@ class SeedGenerator(keras.Model):
 
         # predict
         logits = self(X, training=False)
-        y_pred = tf.nn.softmax(logits, axis=-1)
         # compute metrics stateless
         self.val_act_acc.update_state(y, logits)
-        self.val_loss.update_state(y, y_pred)
+        self.val_loss.update_state(y, logits)
         return {"val_act_acc": self.val_act_acc.result(),
                 "val_loss": self.val_loss.result()}
 

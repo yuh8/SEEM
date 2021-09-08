@@ -4,12 +4,16 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
 from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
-                     FEATURE_DEPTH, ATOM_LIST, ATOM_MAX_VALENCE,
-                     BOND_NAMES, CHARGES, MAX_NUM_ATOMS)
+                     ATOM_LIST, ATOM_MAX_VALENCE,
+                     BOND_NAMES, CHARGES)
 RDLogger.DisableLog('rdApp.*')
 
 
 def has_valid_elements(mol):
+    len_elements = len([atom.GetSymbol() for atom in mol.GetAtoms()])
+    if len_elements > MAX_NUM_ATOMS:
+        return False
+
     has_unknown_element = [atom.GetSymbol() not in ATOM_LIST for atom in mol.GetAtoms()]
     if sum(has_unknown_element) > 0:
         return False
@@ -119,7 +123,7 @@ def update_atom_property(mol, charges):
     return mol
 
 
-def graph_to_smiles(smi_graph, charges):
+def graph_to_smiles(smi_graph):
     con_graph = np.sum(smi_graph, axis=-1)
     graph_dim = con_graph.shape[0]
     mol = Chem.RWMol()
@@ -176,6 +180,13 @@ def act_idx_to_vect(action_idx):
     return action_vec
 
 
+def get_last_col_with_atom(state):
+    # last column with atom or connection
+    col_state = state.sum(-1).sum(-1)
+    col = np.maximum(col_state[col_state > 0].shape[0] - 1, 0)
+    return col
+
+
 def get_action_mask_from_state(state):
     '''
     indicate masking location with value 1
@@ -190,8 +201,7 @@ def get_action_mask_from_state(state):
     action_vec_mask[zero_bond_idx] = 1
 
     # last column with atom or connection
-    col_state = state.sum(-1).sum(-1)
-    col = np.maximum(col_state[col_state > 0].shape[0] - 1, 0)
+    col = get_last_col_with_atom(state)
 
     # bond creation allowed only in upper triangle
     action_vec_mask[num_act_charge_actions + col * len(BOND_NAMES):] = 1
@@ -236,14 +246,12 @@ def decompose_smi_graph(smi_graph):
     gragh_dim = con_graph.shape[0]
     # last feature dim tracks the remaining valence
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
-    mask = get_action_mask_from_state(state)
     states = [deepcopy(state)]
-    masks = [mask]
     actions = []
     for jj in range(gragh_dim):
         # terminate
         if sum(smi_graph[jj, jj, :]) == 0:
-            return actions, masks[:-1], states[:-1]
+            return actions, states[:-1]
         # adding atom and charge
         atom_act_idx = smi_graph[jj, jj, :len(ATOM_LIST)].argmax()
         charge_act_idx = smi_graph[jj, jj, -len(CHARGES):].argmax()
@@ -254,9 +262,7 @@ def decompose_smi_graph(smi_graph):
         state[jj, jj, :-1] = smi_graph[jj, jj, :]
         # once an atom is added, initialize with full valence
         state[jj, jj, -1] = ATOM_MAX_VALENCE[atom_act_idx]
-        mask = get_action_mask_from_state(state)
         states.append(deepcopy(state))
-        masks.append(mask)
         for ii in range(jj):
             charge_act_idx = None
             atom_act_idx = None
@@ -272,11 +278,9 @@ def decompose_smi_graph(smi_graph):
                 # once a bond is added, deduct valence with bond_idx for connected atoms
                 state[ii, ii, -1] -= bond_act_idx
                 state[jj, jj, -1] -= bond_act_idx
-                mask = get_action_mask_from_state(state)
                 states.append(deepcopy(state))
-                masks.append(mask)
 
-    return actions, masks[:-1], states[:-1]
+    return actions, states[:-1]
 
 
 if __name__ == "__main__":
