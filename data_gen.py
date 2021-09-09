@@ -36,8 +36,11 @@ def save_data_batch(raw_data_path, dest_data_path):
     for idx, row in df.iterrows():
         try:
             smi_graph = smiles_to_graph(row.Smiles)
+            if smi_graph is None:
+                continue
         except:
             continue
+
         actions, states = decompose_smi_graph(smi_graph)
         x.extend(states)
         y.extend(actions)
