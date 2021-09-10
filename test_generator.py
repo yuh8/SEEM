@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from rdkit import Chem
 from rdkit.Chem.Descriptors import qed
 from scipy.special import softmax
 from train_generator import loss_func, get_metrics, get_optimizer, SeedGenerator
@@ -14,7 +15,7 @@ from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
                         ATOM_LIST, CHARGES)
 
 
-def sample_action(action_logits, state, T=0.75):
+def sample_action(action_logits, state, T=0.65):
     action_mask = get_action_mask_from_state(state)
     action_logits -= action_mask * 1e9
     action_probs = softmax(action_logits / T)
@@ -87,7 +88,40 @@ def generate_smiles(model, gen_idx):
     draw_smiles(smi, "gen_samples/gen_sample_{}".format(gen_idx))
     print('Smiles: {} with QED {}'.format(smi, qed(mol)))
     qed_score = qed(mol)
-    return smi, qed_score
+    return smi, qed_score, num_atoms
+
+
+def _canonicalize_smiles(smi):
+    try:
+        smi = Chem.MolToSmiles(Chem.MolFromSmiles(smi))
+    except:
+        return np.nan
+    return smi
+
+
+def compute_unique_score():
+    gen_samples_df = pd.read_csv("generated_molecules.csv")
+    gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
+    gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
+    num_uniques = gen_samples_df.CanSmiles.unique().shape[0]
+    unique_score = np.round(num_uniques / gen_samples_df.shape[0], 3)
+    print("Unique score = {}".format(unique_score))
+    return unique_score
+
+
+def compute_novelty_score():
+    gen_samples_df = pd.read_csv("generated_molecules.csv")
+    train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train.csv')
+    gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
+    train_samples_df.loc[:, 'CanSmiles'] = train_samples_df.Smiles.map(_canonicalize_smiles)
+    gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
+    train_samples_df = train_samples_df[~train_samples_df.CanSmiles.isnull()]
+    gen_smi_unique = list(gen_samples_df.CanSmiles.unique())
+    train_smi_unique = list(train_samples_df.CanSmiles.unique())
+    intersection_samples = list(set(gen_smi_unique) & set(train_smi_unique))
+    novelty_score = np.round(1 - len(intersection_samples) / len(gen_smi_unique), 3)
+    print("Novelty score = {}".format(novelty_score))
+    return novelty_score
 
 
 if __name__ == "__main__":
@@ -102,15 +136,19 @@ if __name__ == "__main__":
     for idx in range(10000):
         gen_sample = {}
         try:
-            smi, qed_score = generate_smiles(model, idx)
+            smi, qed_score, num_atoms = generate_smiles(model, idx)
         except:
             continue
 
         gen_sample["Smiles"] = smi
         gen_sample["QED"] = qed_score
+        gen_sample["NumAtoms"] = num_atoms
         gen_samples_df.append(gen_sample)
         count += 1
         print("validation rate = {}".format(np.round(count / (idx + 1), 3)))
 
     gen_samples_df = pd.DataFrame(gen_samples_df)
     gen_samples_df.to_csv('generated_molecules.csv', index=False)
+    compute_unique_score()
+    compute_novelty_score()
+    breakpoint()
