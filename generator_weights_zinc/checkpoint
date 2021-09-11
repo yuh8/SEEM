@@ -1,0 +1,2 @@
+model_checkpoint_path: "generator_zinc"
+all_model_checkpoint_paths: "generator_zinc"

@@ -100,7 +100,7 @@ def _canonicalize_smiles(smi):
 
 
 def compute_unique_score():
-    gen_samples_df = pd.read_csv("generated_molecules.csv")
+    gen_samples_df = pd.read_csv("generated_molecules_zinc.csv")
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
     num_uniques = gen_samples_df.CanSmiles.unique().shape[0]
@@ -110,8 +110,8 @@ def compute_unique_score():
 
 
 def compute_novelty_score():
-    gen_samples_df = pd.read_csv("generated_molecules.csv")
-    train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train.csv')
+    gen_samples_df = pd.read_csv("generated_molecules_zinc.csv")
+    train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train_zinc.csv')
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     train_samples_df.loc[:, 'CanSmiles'] = train_samples_df.Smiles.map(_canonicalize_smiles)
     gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
@@ -125,12 +125,12 @@ def compute_novelty_score():
 
 
 if __name__ == "__main__":
-    create_folder('gen_samples/')
-    model = load_json_model("generator_model/generator_model.json", SeedGenerator, "SeedGenerator")
+    create_folder('gen_samples_zinc/')
+    model = load_json_model("generator_model_zinc/generator_model_zinc.json", SeedGenerator, "SeedGenerator")
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
-    model.load_weights("./checkpoints/generator/")
+    model.load_weights("./checkpoints/generator_zinc/")
     gen_samples_df = []
     count = 0
     for idx in range(10000):
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         print("validation rate = {}".format(np.round(count / (idx + 1), 3)))
 
     gen_samples_df = pd.DataFrame(gen_samples_df)
-    gen_samples_df.to_csv('generated_molecules.csv', index=False)
+    gen_samples_df.to_csv('generated_molecules_zinc.csv', index=False)
     compute_unique_score()
     compute_novelty_score()
     breakpoint()

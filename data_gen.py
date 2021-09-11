@@ -10,21 +10,22 @@ from src.CONSTS import BATCH_SIZE
 
 
 def get_train_val_test_data():
-    df_data = pd.read_csv("D:/seed_data/small_mol_db.csv", sep=';', low_memory=False)
-    create_folder('D:/seed_data/generator/train_data/train_batch/')
-    create_folder('D:/seed_data/generator/test_data/test_batch/')
-    create_folder('D:/seed_data/generator/test_data/val_batch/')
+    df_data = pd.read_csv("D:/seed_data/Zinc_250k.smi", sep=" ", header=None)
+    df_data.columns = ['Smiles']
+    create_folder('D:/seed_data/generator/train_data/train_batch_zinc/')
+    create_folder('D:/seed_data/generator/test_data/test_batch_zinc/')
+    create_folder('D:/seed_data/generator/test_data/val_batch_zinc/')
 
     # train, val, test split
     df_train, df_test \
-        = train_test_split(df_data, test_size=0.01, random_state=43)
+        = train_test_split(df_data, test_size=int(1e4), random_state=43)
 
     df_train, df_val \
-        = train_test_split(df_train, test_size=0.01, random_state=43)
+        = train_test_split(df_train, test_size=int(1e4), random_state=43)
 
-    df_train.to_csv('D:/seed_data/generator/train_data/df_train.csv', index=False)
-    df_test.to_csv('D:/seed_data/generator/test_data/df_test.csv', index=False)
-    df_val.to_csv('D:/seed_data/generator/test_data/df_val.csv', index=False)
+    df_train.to_csv('D:/seed_data/generator/train_data/df_train_zinc.csv', index=False)
+    df_test.to_csv('D:/seed_data/generator/test_data/df_test_zinc.csv', index=False)
+    df_val.to_csv('D:/seed_data/generator/test_data/df_val_zinc.csv', index=False)
 
 
 def save_data_batch(raw_data_path, dest_data_path):
@@ -93,9 +94,9 @@ def data_iterator_test(test_path):
 
 if __name__ == "__main__":
     get_train_val_test_data()
-    save_data_batch('D:/seed_data/generator/train_data/df_train.csv',
-                    'D:/seed_data/generator/train_data/train_batch/')
-    save_data_batch('D:/seed_data/generator/test_data/df_val.csv',
-                    'D:/seed_data/generator/test_data/val_batch/')
-    save_data_batch('D:/seed_data/generator/test_data/df_test.csv',
-                    'D:/seed_data/generator/test_data/test_batch/')
+    save_data_batch('D:/seed_data/generator/train_data/df_train_zinc.csv',
+                    'D:/seed_data/generator/train_data/train_batch_zinc/')
+    save_data_batch('D:/seed_data/generator/test_data/df_val_zinc.csv',
+                    'D:/seed_data/generator/test_data/val_batch_zinc/')
+    save_data_batch('D:/seed_data/generator/test_data/df_test_zinc.csv',
+                    'D:/seed_data/generator/test_data/test_batch_zinc/')

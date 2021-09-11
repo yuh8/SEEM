@@ -41,7 +41,6 @@ def core_model():
 
     for _ in range(major_block_size):
         out = res_block(out, NUM_FILTERS, FILTER_SIZE)
-    out = layers.MaxPool2D(2, 2)(out)
 
     out = layers.GlobalMaxPooling2D()(out)
     action_logits = layers.Dense(num_act_charge_actions + num_loc_bond_actions,
@@ -127,12 +126,12 @@ class SeedGenerator(keras.Model):
 
 if __name__ == "__main__":
     freeze_support()
-    ckpt_path = 'checkpoints/generator/'
+    ckpt_path = 'checkpoints/generator_zinc/'
     create_folder(ckpt_path)
-    create_folder("generator_model")
-    train_path = 'D:/seed_data/generator/train_data/train_batch/'
-    val_path = 'D:/seed_data/generator/test_data/val_batch/'
-    test_path = 'D:/seed_data/generator/test_data/test_batch/'
+    create_folder("generator_model_zinc")
+    train_path = 'D:/seed_data/generator/train_data/train_batch_zinc/'
+    val_path = 'D:/seed_data/generator/test_data/val_batch_zinc/'
+    test_path = 'D:/seed_data/generator/test_data/test_batch_zinc/'
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
@@ -147,11 +146,11 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
-    save_model_to_json(model, "generator_model/generator_model.json")
+    save_model_to_json(model, "generator_model_zinc/generator_model_zinc.json")
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=2,
+              epochs=4,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
@@ -160,14 +159,14 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model/", include_optimizer=False)
-    model.save_weights("./generator_weights/generator")
+    model.save("generator_full_model_zinc/", include_optimizer=False)
+    model.save_weights("./generator_weights_zinc/generator_zinc")
 
-    model_new = load_json_model("generator_model/generator_model.json",
+    model_new = load_json_model("generator_model_zinc/generator_model_zinc.json",
                                 SeedGenerator, "SeedGenerator")
     model_new.compile(optimizer=get_optimizer(),
                       loss_fn=loss_func,
                       metric_fn=get_metrics)
-    model_new.load_weights("./generator_weights/generator")
+    model_new.load_weights("./generator_weights_zinc/generator_zinc")
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)
