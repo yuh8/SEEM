@@ -85,7 +85,7 @@ def generate_smiles(model, gen_idx):
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
     mol = standardize_smiles_to_mol(smi)
-    draw_smiles(smi, "gen_samples/gen_sample_{}".format(gen_idx))
+    draw_smiles(smi, "gen_samples_zinc/gen_sample_{}".format(gen_idx))
     print('Smiles: {} with QED {}'.format(smi, qed(mol)))
     qed_score = qed(mol)
     return smi, qed_score, num_atoms

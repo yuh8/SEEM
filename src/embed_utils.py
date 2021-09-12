@@ -20,8 +20,6 @@ def conv2d_block(X, num_filters, kernel_size, padding='SAME'):
 def res_block(X, num_filters, kernel_size, padding='SAME'):
     out = conv2d_block(X, num_filters,
                        kernel_size, padding=padding)
-    out = conv2d_block(X, num_filters,
-                       kernel_size, padding=padding)
     out = tf.keras.layers.Add()([out, X])
     out = tf.keras.layers.LeakyReLU()(out)
     return out
