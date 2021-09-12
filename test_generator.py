@@ -15,7 +15,7 @@ from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
                         ATOM_LIST, CHARGES)
 
 
-def sample_action(action_logits, state, T=0.65):
+def sample_action(action_logits, state, T=0.9):
     action_mask = get_action_mask_from_state(state)
     action_logits -= action_mask * 1e9
     action_probs = softmax(action_logits / T)
@@ -73,7 +73,7 @@ def update_state_with_action(action_logits, state, num_atoms):
 
 
 def generate_smiles(model, gen_idx):
-    num_atoms = np.random.randint(MIN_NUM_ATOMS, MAX_NUM_ATOMS)
+    num_atoms = np.random.randint(3, 9)
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     is_terminate = False
 
@@ -85,7 +85,7 @@ def generate_smiles(model, gen_idx):
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
     mol = standardize_smiles_to_mol(smi)
-    draw_smiles(smi, "gen_samples_zinc/gen_sample_{}".format(gen_idx))
+    draw_smiles(smi, "gen_samples_qm9/gen_sample_{}".format(gen_idx))
     print('Smiles: {} with QED {}'.format(smi, qed(mol)))
     qed_score = qed(mol)
     return smi, qed_score, num_atoms
@@ -100,7 +100,7 @@ def _canonicalize_smiles(smi):
 
 
 def compute_unique_score():
-    gen_samples_df = pd.read_csv("generated_molecules_zinc.csv")
+    gen_samples_df = pd.read_csv("generated_molecules_qm9.csv")
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
     num_uniques = gen_samples_df.CanSmiles.unique().shape[0]
@@ -110,8 +110,8 @@ def compute_unique_score():
 
 
 def compute_novelty_score():
-    gen_samples_df = pd.read_csv("generated_molecules_zinc.csv")
-    train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train_zinc.csv')
+    gen_samples_df = pd.read_csv("generated_molecules_qm9.csv")
+    train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train_qm9.csv')
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     train_samples_df.loc[:, 'CanSmiles'] = train_samples_df.Smiles.map(_canonicalize_smiles)
     gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
@@ -125,12 +125,12 @@ def compute_novelty_score():
 
 
 if __name__ == "__main__":
-    create_folder('gen_samples_zinc/')
-    model = load_json_model("generator_model_zinc/generator_model_zinc.json", SeedGenerator, "SeedGenerator")
+    create_folder('gen_samples_qm9/')
+    model = load_json_model("generator_model_qm9/generator_model_qm9.json", SeedGenerator, "SeedGenerator")
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
-    model.load_weights("./checkpoints/generator_zinc/")
+    model.load_weights("./checkpoints/generator_qm9/")
     gen_samples_df = []
     count = 0
     for idx in range(10000):
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         print("validation rate = {}".format(np.round(count / (idx + 1), 3)))
 
     gen_samples_df = pd.DataFrame(gen_samples_df)
-    gen_samples_df.to_csv('generated_molecules_zinc.csv', index=False)
+    gen_samples_df.to_csv('generated_molecules_qm9.csv', index=False)
     compute_unique_score()
     compute_novelty_score()
     breakpoint()

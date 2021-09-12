@@ -70,7 +70,7 @@ def get_optimizer(finetune=False):
     if finetune:
         lr = 0.00001
     lr_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-        [200000, 400000, 600000], [lr, lr / 10, lr / 50, lr / 100],
+        [50000, 100000, 200000], [lr, lr / 10, lr / 50, lr / 100],
         name=None
     )
     opt_op = tf.keras.optimizers.Adam(learning_rate=lr_fn)
@@ -126,12 +126,12 @@ class SeedGenerator(keras.Model):
 
 if __name__ == "__main__":
     freeze_support()
-    ckpt_path = 'checkpoints/generator_zinc/'
+    ckpt_path = 'checkpoints/generator_qm9/'
     create_folder(ckpt_path)
-    create_folder("generator_model_zinc")
-    train_path = 'D:/seed_data/generator/train_data/train_batch_zinc/'
-    val_path = 'D:/seed_data/generator/test_data/val_batch_zinc/'
-    test_path = 'D:/seed_data/generator/test_data/test_batch_zinc/'
+    create_folder("generator_model_qm9")
+    train_path = 'D:/seed_data/generator/train_data/train_batch_qm9/'
+    val_path = 'D:/seed_data/generator/test_data/val_batch_qm9/'
+    test_path = 'D:/seed_data/generator/test_data/test_batch_qm9/'
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
@@ -146,11 +146,11 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
-    save_model_to_json(model, "generator_model_zinc/generator_model_zinc.json")
+    save_model_to_json(model, "generator_model_qm9/generator_model_qm9.json")
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=4,
+              epochs=15,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
@@ -159,14 +159,14 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model_zinc/", include_optimizer=False)
-    model.save_weights("./generator_weights_zinc/generator_zinc")
+    model.save("generator_full_model_qm9/", include_optimizer=False)
+    model.save_weights("./generator_weights_qm9/generator_qm9")
 
-    model_new = load_json_model("generator_model_zinc/generator_model_zinc.json",
+    model_new = load_json_model("generator_model_qm9/generator_model_qm9.json",
                                 SeedGenerator, "SeedGenerator")
     model_new.compile(optimizer=get_optimizer(),
                       loss_fn=loss_func,
                       metric_fn=get_metrics)
-    model_new.load_weights("./generator_weights_zinc/generator_zinc")
+    model_new.load_weights("./generator_weights_qm9/generator_qm9")
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)

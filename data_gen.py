@@ -10,11 +10,11 @@ from src.CONSTS import BATCH_SIZE
 
 
 def get_train_val_test_data():
-    df_data = pd.read_csv("D:/seed_data/Zinc_250k.smi", sep=" ", header=None)
+    df_data = pd.read_csv("D:/seed_data/QM9_smiles.txt", sep=" ", header=None)
     df_data.columns = ['Smiles']
-    create_folder('D:/seed_data/generator/train_data/train_batch_zinc/')
-    create_folder('D:/seed_data/generator/test_data/test_batch_zinc/')
-    create_folder('D:/seed_data/generator/test_data/val_batch_zinc/')
+    create_folder('D:/seed_data/generator/train_data/train_batch_qm9/')
+    create_folder('D:/seed_data/generator/test_data/test_batch_qm9/')
+    create_folder('D:/seed_data/generator/test_data/val_batch_qm9/')
 
     # train, val, test split
     df_train, df_test \
@@ -23,9 +23,9 @@ def get_train_val_test_data():
     df_train, df_val \
         = train_test_split(df_train, test_size=int(1e4), random_state=43)
 
-    df_train.to_csv('D:/seed_data/generator/train_data/df_train_zinc.csv', index=False)
-    df_test.to_csv('D:/seed_data/generator/test_data/df_test_zinc.csv', index=False)
-    df_val.to_csv('D:/seed_data/generator/test_data/df_val_zinc.csv', index=False)
+    df_train.to_csv('D:/seed_data/generator/train_data/df_train_qm9.csv', index=False)
+    df_test.to_csv('D:/seed_data/generator/test_data/df_test_qm9.csv', index=False)
+    df_val.to_csv('D:/seed_data/generator/test_data/df_val_qm9.csv', index=False)
 
 
 def save_data_batch(raw_data_path, dest_data_path):
@@ -94,9 +94,9 @@ def data_iterator_test(test_path):
 
 if __name__ == "__main__":
     get_train_val_test_data()
-    save_data_batch('D:/seed_data/generator/train_data/df_train_zinc.csv',
-                    'D:/seed_data/generator/train_data/train_batch_zinc/')
-    save_data_batch('D:/seed_data/generator/test_data/df_val_zinc.csv',
-                    'D:/seed_data/generator/test_data/val_batch_zinc/')
-    save_data_batch('D:/seed_data/generator/test_data/df_test_zinc.csv',
-                    'D:/seed_data/generator/test_data/test_batch_zinc/')
+    save_data_batch('D:/seed_data/generator/train_data/df_train_qm9.csv',
+                    'D:/seed_data/generator/train_data/train_batch_qm9/')
+    save_data_batch('D:/seed_data/generator/test_data/df_val_qm9.csv',
+                    'D:/seed_data/generator/test_data/val_batch_qm9/')
+    save_data_batch('D:/seed_data/generator/test_data/df_test_qm9.csv',
+                    'D:/seed_data/generator/test_data/test_batch_qm9/')
