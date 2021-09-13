@@ -1,24 +1,25 @@
 import numpy as np
 import pandas as pd
 from rdkit import Chem
-from rdkit.Chem.Descriptors import qed
 from scipy.special import softmax
 from train_generator import loss_func, get_metrics, get_optimizer, SeedGenerator
 from src.data_process_utils import (get_action_mask_from_state,
-                                    standardize_smiles_to_mol,
-                                    get_last_col_with_atom, draw_smiles,
+                                    get_last_col_with_atom,
+                                    draw_smiles,
                                     get_initial_act_vec, graph_to_smiles)
 from src.misc_utils import create_folder, load_json_model
-from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
-                        MIN_NUM_ATOMS, FEATURE_DEPTH,
+from src.CONSTS import (BOND_NAMES,
+                        MAX_NUM_ATOMS,
+                        FEATURE_DEPTH,
                         ATOM_MAX_VALENCE,
                         ATOM_LIST, CHARGES)
 
 
-def sample_action(action_logits, state, T=0.9):
+def sample_action(action_logits, state, T=1):
     action_mask = get_action_mask_from_state(state)
-    action_logits -= action_mask * 1e9
     action_probs = softmax(action_logits / T)
+    action_probs = action_probs * (1 - action_mask)
+    action_probs = action_probs / np.sum(action_probs)
     act_vec = get_initial_act_vec()
     action_size = act_vec.shape[0]
     action_idx = np.random.choice(action_size, p=action_probs)
@@ -84,11 +85,9 @@ def generate_smiles(model, gen_idx):
 
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
-    mol = standardize_smiles_to_mol(smi)
-    draw_smiles(smi, "gen_samples_qm9/gen_sample_{}".format(gen_idx))
-    print('Smiles: {} with QED {}'.format(smi, qed(mol)))
-    qed_score = qed(mol)
-    return smi, qed_score, num_atoms
+    smi = _canonicalize_smiles(smi)
+    draw_smiles(smi, 'gen_samples_qm9/gen_sample_{}'.format(gen_idx))
+    return smi, num_atoms
 
 
 def _canonicalize_smiles(smi):
@@ -136,12 +135,11 @@ if __name__ == "__main__":
     for idx in range(10000):
         gen_sample = {}
         try:
-            smi, qed_score, num_atoms = generate_smiles(model, idx)
+            smi, num_atoms = generate_smiles(model, idx)
         except:
             continue
 
         gen_sample["Smiles"] = smi
-        gen_sample["QED"] = qed_score
         gen_sample["NumAtoms"] = num_atoms
         gen_samples_df.append(gen_sample)
         count += 1
