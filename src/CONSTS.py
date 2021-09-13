@@ -32,7 +32,7 @@ ATOM_MAX_VALENCE = [1, 4, 5, 2, 1, 6, 1, 7, 5, 7, 1, 3, 4, 6, 1]
 BOND_DICT = Chem.rdchem.BondType.values
 BOND_NAMES = list(BOND_DICT.values())[:4]
 CHARGES = [-1, 0, 1, 2, 3]
-MIN_NUM_ATOMS = 9
+MIN_NUM_ATOMS = 3
 
 FEATURE_DEPTH = len(ATOM_LIST) + len(BOND_NAMES) + len(CHARGES)
 
