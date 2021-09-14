@@ -123,7 +123,7 @@ def update_atom_property(mol, charges):
     return mol
 
 
-def graph_to_smiles(smi_graph):
+def graph_to_smiles(smi_graph, return_mol=False):
     con_graph = np.sum(smi_graph, axis=-1)
     graph_dim = con_graph.shape[0]
     mol = Chem.RWMol()
@@ -151,6 +151,8 @@ def graph_to_smiles(smi_graph):
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
+    if return_mol:
+        return mol
     smi = Chem.MolToSmiles(mol, isomericSmiles=False)
     return smi
 
