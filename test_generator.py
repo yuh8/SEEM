@@ -14,12 +14,7 @@ from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
                         ATOM_LIST, CHARGES)
 
 
-def check_valency(mol):
-    """
-    Checks that no atoms in the mol have exceeded their possible
-    valency
-    :return: True if no valency issues, False otherwise
-    """
+def check_validity(mol):
     try:
         Chem.SanitizeMol(mol,
                          sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES)
@@ -85,7 +80,7 @@ def update_state_with_action(action_logits, state, num_atoms):
     return state, is_terminate
 
 
-def update_state_with_action_valence_check(action_logits, state, num_atoms):
+def update_state_with_action_validity_check(action_logits, state, num_atoms):
     is_terminate = False
     num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
     max_remaining_valence = state[:, :, -1].sum(-1).max()
@@ -96,7 +91,6 @@ def update_state_with_action_valence_check(action_logits, state, num_atoms):
         return state, is_terminate
 
     valid = False
-    count = 0
     while not valid:
         feature_vec = np.zeros(FEATURE_DEPTH)
         action_idx = sample_action(action_logits, state)
@@ -133,12 +127,9 @@ def update_state_with_action_valence_check(action_logits, state, num_atoms):
             state_new[row, row, -1] -= bond_idx
             state_new[col, col, -1] -= bond_idx
             mol = graph_to_smiles(state_new[:, :, :-1], return_mol=True)
-            valid = check_valency(mol)
+            valid = check_validity(mol)
             if not valid:
                 action_logits[action_idx] = -1e9
-            count += 1
-            if count >= 1000:
-                breakpoint()
 
     return state_new, is_terminate
 
@@ -151,7 +142,7 @@ def generate_smiles(model, gen_idx):
     while not is_terminate:
         X_in = state[np.newaxis, ...]
         action_logits = model(X_in, training=False).numpy()[0]
-        state, is_terminate = update_state_with_action_valence_check(action_logits, state, num_atoms)
+        state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
         # state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
