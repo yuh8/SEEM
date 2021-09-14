@@ -81,6 +81,7 @@ def standardize_smiles_to_mol(smi):
 
 def draw_smiles(smi, file_name):
     mol = Chem.MolFromSmiles(smi)
+    Chem.Kekulize(mol, clearAromaticFlags=True)
     Draw.MolToFile(mol, '{}.png'.format(file_name))
 
 
@@ -122,7 +123,7 @@ def update_atom_property(mol, charges):
     return mol
 
 
-def graph_to_smiles(smi_graph, draw_mol=False, file_name="mol"):
+def graph_to_smiles(smi_graph, return_mol=False):
     con_graph = np.sum(smi_graph, axis=-1)
     graph_dim = con_graph.shape[0]
     mol = Chem.RWMol()
@@ -150,9 +151,9 @@ def graph_to_smiles(smi_graph, draw_mol=False, file_name="mol"):
                 mol.AddBond(atoms[ii], atoms[jj], bond_type)
 
     mol = update_atom_property(mol, charges)
+    if return_mol:
+        return mol
     smi = Chem.MolToSmiles(mol, isomericSmiles=False)
-    if draw_mol:
-        Draw.MolToFile(mol, '{}.png'.format(file_name))
     return smi
 
 
