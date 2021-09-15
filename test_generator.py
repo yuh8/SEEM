@@ -1,25 +1,31 @@
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 from rdkit import Chem
 from scipy.special import softmax
 from train_generator import loss_func, get_metrics, get_optimizer, SeedGenerator
 from src.data_process_utils import (get_action_mask_from_state,
-                                    get_last_col_with_atom,
-                                    draw_smiles,
+                                    get_last_col_with_atom, draw_smiles,
                                     get_initial_act_vec, graph_to_smiles)
 from src.misc_utils import create_folder, load_json_model
-from src.CONSTS import (BOND_NAMES,
-                        MAX_NUM_ATOMS,
-                        FEATURE_DEPTH,
-                        ATOM_MAX_VALENCE,
+from src.CONSTS import (BOND_NAMES, MAX_NUM_ATOMS,
+                        FEATURE_DEPTH, ATOM_MAX_VALENCE,
                         ATOM_LIST, CHARGES)
+
+
+def check_validity(mol):
+    try:
+        Chem.SanitizeMol(mol,
+                         sanitizeOps=Chem.SanitizeFlags.SANITIZE_PROPERTIES)
+        return True
+    except ValueError:
+        return False
 
 
 def sample_action(action_logits, state, T=1):
     action_mask = get_action_mask_from_state(state)
+    action_logits = np.where(action_mask, -1e9, action_logits)
     action_probs = softmax(action_logits / T)
-    action_probs = action_probs * (1 - action_mask)
-    action_probs = action_probs / np.sum(action_probs)
     act_vec = get_initial_act_vec()
     action_size = act_vec.shape[0]
     action_idx = np.random.choice(action_size, p=action_probs)
@@ -73,6 +79,64 @@ def update_state_with_action(action_logits, state, num_atoms):
     return state, is_terminate
 
 
+def update_state_with_action_validity_check(action_logits, state, num_atoms):
+    is_terminate = False
+    num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
+    max_remaining_valence = state[:, :, -1].sum(-1).max()
+    col = get_last_col_with_atom(state)
+    col_has_atom = (state[:, col, :-1].sum(-1) > 0).any()
+    if (max_remaining_valence < 2) and (col > 0):
+        is_terminate = True
+        return state, is_terminate
+
+    valid = False
+    while not valid:
+        feature_vec = np.zeros(FEATURE_DEPTH)
+        try:
+            action_idx = sample_action(action_logits, state)
+        except:
+            is_terminate = True
+            return state, is_terminate
+        state_new = deepcopy(state)
+        if action_idx <= num_act_charge_actions:
+            if col >= num_atoms:
+                is_terminate = True
+                return state, is_terminate
+
+            atom_idx = action_idx // len(CHARGES)
+            charge_idx = action_idx % len(CHARGES) - len(CHARGES)
+            feature_vec[atom_idx] = 2
+            feature_vec[charge_idx] = 1
+
+            if col_has_atom:
+                state_new[col + 1, col + 1, :-1] = feature_vec
+                # once an atom is added, initialize with full valence
+                state_new[col + 1, col + 1, -1] = ATOM_MAX_VALENCE[atom_idx]
+            else:
+                state_new[col, col, :-1] = feature_vec
+                state_new[col, col, -1] = ATOM_MAX_VALENCE[atom_idx]
+            return state_new, is_terminate
+        else:
+            row = (action_idx - num_act_charge_actions) // len(BOND_NAMES)
+            bond_idx = (action_idx - num_act_charge_actions) % len(BOND_NAMES)
+            bond_feature_idx = len(ATOM_LIST) + bond_idx
+            atom_idx_row = state_new[row, row, :len(ATOM_LIST)].argmax()
+            atom_idx_col = state_new[col, col, :len(ATOM_LIST)].argmax()
+            feature_vec[bond_feature_idx] = 1
+            feature_vec[atom_idx_row] += 1
+            feature_vec[atom_idx_col] += 1
+            state_new[row, col, :-1] = feature_vec
+            state_new[col, row, :-1] = feature_vec
+            state_new[row, row, -1] -= bond_idx
+            state_new[col, col, -1] -= bond_idx
+            mol = graph_to_smiles(state_new[:, :, :-1], return_mol=True)
+            valid = check_validity(mol)
+            if not valid:
+                action_logits[action_idx] = -1e9
+
+    return state_new, is_terminate
+
+
 def generate_smiles(model, gen_idx):
     num_atoms = np.random.randint(3, 9)
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
@@ -81,6 +145,7 @@ def generate_smiles(model, gen_idx):
     while not is_terminate:
         X_in = state[np.newaxis, ...]
         action_logits = model(X_in, training=False).numpy()[0]
+        # state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
         state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
