@@ -1,5 +1,6 @@
 import glob
 import tensorflow as tf
+from datetime import date
 from tensorflow import keras
 from tensorflow.keras import layers
 from multiprocessing import freeze_support
@@ -9,6 +10,8 @@ from src.misc_utils import create_folder, save_model_to_json, load_json_model
 from src.CONSTS import (ATOM_LIST, CHARGES, BOND_NAMES,
                         MAX_NUM_ATOMS, FEATURE_DEPTH,
                         NUM_FILTERS, FILTER_SIZE, NUM_RES_BLOCKS)
+
+today = str(date.today())
 
 
 def core_model():
@@ -127,9 +130,9 @@ class SeedGenerator(keras.Model):
 
 if __name__ == "__main__":
     freeze_support()
-    ckpt_path = 'checkpoints/generator/'
+    ckpt_path = 'checkpoints/generator_{}/'.format(today)
     create_folder(ckpt_path)
-    create_folder("generator_model")
+    create_folder("generator_model_{}".format(today))
     train_path = 'D:/seed_data/generator/train_data/train_batch/'
     val_path = 'D:/seed_data/generator/test_data/val_batch/'
     test_path = 'D:/seed_data/generator/test_data/test_batch/'
@@ -147,7 +150,7 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss_fn=loss_func,
                   metric_fn=get_metrics)
-    save_model_to_json(model, "generator_model/generator_model.json")
+    save_model_to_json(model, "generator_model_{}/generator_model.json".format(today))
 
     model.summary()
     model.fit(data_iterator(train_path),
@@ -160,14 +163,14 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model/", include_optimizer=False)
-    model.save_weights("./generator_weights/generator")
+    model.save("generator_full_model_{}/".format(today), include_optimizer=False)
+    model.save_weights("./generator_weights_{}/generator".format(today))
 
-    model_new = load_json_model("generator_model/generator_model.json",
+    model_new = load_json_model("generator_model_{}/generator_model.json".format(today),
                                 SeedGenerator, "SeedGenerator")
     model_new.compile(optimizer=get_optimizer(),
                       loss_fn=loss_func,
                       metric_fn=get_metrics)
-    model_new.load_weights("./generator_weights/generator")
+    model_new.load_weights("./generator_weights_{}/generator".format(today))
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)

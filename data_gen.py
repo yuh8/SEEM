@@ -78,6 +78,7 @@ def data_iterator(data_path):
                 Xy = pickle.load(handle)
 
             X = Xy[0].todense()
+            X[..., -1] /= 8
             y = Xy[1].todense()
             sample_nums = np.arange(y.shape[0])
             np.random.shuffle(sample_nums)
@@ -88,7 +89,10 @@ def data_iterator_test(test_path):
     for f_name in glob.glob(test_path + 'Xy_*.pkl'):
         with open(f_name, 'rb') as handle:
             Xy = pickle.load(handle)
-        yield Xy[0].todense(), Xy[1].todense()
+        X = Xy[0].todense()
+        X[..., -1] /= 8
+        y = Xy[1].todense()
+        yield X, y
 
 
 if __name__ == "__main__":
