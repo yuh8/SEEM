@@ -12,7 +12,6 @@ def conv2d_block(X, num_filters, kernel_size, padding='SAME'):
                                  padding=padding,
                                  activation=None,
                                  use_bias=False)(X)
-    out = tf.keras.layers.LeakyReLU()(out)
     return out
 
 
@@ -20,9 +19,10 @@ def res_block(X, num_filters, kernel_size, padding='SAME'):
     out = conv2d_block(X, num_filters,
                        kernel_size, padding=padding)
     out = tf.keras.layers.BatchNormalization()(out)
+    out = tf.keras.layers.ReLU()(out)
     out = conv2d_block(out, num_filters,
                        kernel_size, padding=padding)
     out = tf.keras.layers.BatchNormalization()(out)
     out = tf.keras.layers.Add()([out, X])
-    out = tf.keras.layers.LeakyReLU()(out)
+    out = tf.keras.layers.ReLU()(out)
     return out

@@ -2,7 +2,7 @@ import glob
 import tensorflow as tf
 from datetime import date
 from tensorflow import keras
-from tensorflow.keras import layers
+from tensorflow.keras import layers, models
 from multiprocessing import freeze_support
 from data_gen import data_iterator, data_iterator_test
 from src.embed_utils import conv2d_block, res_block
@@ -139,17 +139,17 @@ if __name__ == "__main__":
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
-                                                    monitor='train_act_acc',
+                                                    monitor='categorical_accuracy',
                                                     mode='max',
                                                     save_best_only=True)]
     steps_per_epoch = len(glob.glob(train_path + 'Xy_*.pkl'))
     val_steps = len(glob.glob(val_path + 'Xy_*.pkl'))
     # train
     X, action_logits = core_model()
-    model = SeedGenerator(X, action_logits)
+    model = keras.Model(inputs=X, outputs=action_logits)
     model.compile(optimizer=get_optimizer(),
-                  loss_fn=loss_func,
-                  metric_fn=get_metrics)
+                  loss=keras.losses.CategoricalCrossentropy(from_logits=True),
+                  metrics=[keras.metrics.CategoricalAccuracy()])
     save_model_to_json(model, "generator_model_{}/generator_model.json".format(today))
 
     model.summary()
@@ -163,14 +163,7 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model_{}/".format(today), include_optimizer=False)
-    model.save_weights("./generator_weights_{}/generator".format(today))
-
-    model_new = load_json_model("generator_model_{}/generator_model.json".format(today),
-                                SeedGenerator, "SeedGenerator")
-    model_new.compile(optimizer=get_optimizer(),
-                      loss_fn=loss_func,
-                      metric_fn=get_metrics)
-    model_new.load_weights("./generator_weights_{}/generator".format(today))
+    model.save("generator_full_model_{}/".format(today))
+    model_new = models.load_model("generator_full_model_{}/".format(today))
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)
