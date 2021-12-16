@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=2,
+              epochs=4,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
