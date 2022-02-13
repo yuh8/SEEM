@@ -1,9 +1,9 @@
 from copy import deepcopy
 import numpy as np
 import pandas as pd
+from tensorflow import keras
 from rdkit import Chem
 from scipy.special import softmax
-from train_generator import loss_func, get_metrics, get_optimizer, SeedGenerator
 from src.data_process_utils import (get_action_mask_from_state,
                                     get_last_col_with_atom, draw_smiles,
                                     get_initial_act_vec, graph_to_smiles)
@@ -144,10 +144,11 @@ def generate_smiles(model, gen_idx):
     is_terminate = False
 
     while not is_terminate:
-        X_in = state[np.newaxis, ...]
+        X_in = deepcopy(state[np.newaxis, ...])
+        X_in[..., -1] /= 8
         action_logits = model(X_in, training=False).numpy()[0]
-        # state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
-        state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
+        state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
+        # state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
@@ -191,11 +192,11 @@ def compute_novelty_score():
 
 if __name__ == "__main__":
     create_folder('gen_samples/')
-    model = load_json_model("generator_model/generator_model.json", SeedGenerator, "SeedGenerator")
-    model.compile(optimizer=get_optimizer(),
-                  loss_fn=loss_func,
-                  metric_fn=get_metrics)
-    model.load_weights("./checkpoints/generator/")
+    model = load_json_model("generator_model_2021-12-17/generator_model.json")
+    model.compile(optimizer='adam',
+                  loss=keras.losses.CategoricalCrossentropy(from_logits=True),
+                  metrics=[keras.metrics.CategoricalAccuracy()])
+    model.load_weights("./checkpoints/generator_2021-12-17/")
     gen_samples_df = []
     count = 0
     for idx in range(10000):

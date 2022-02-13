@@ -6,7 +6,7 @@ from tensorflow.keras import layers, models
 from multiprocessing import freeze_support
 from data_gen import data_iterator, data_iterator_test
 from src.embed_utils import conv2d_block, res_block
-from src.misc_utils import create_folder, save_model_to_json, load_json_model
+from src.misc_utils import create_folder, save_model_to_json
 from src.CONSTS import (ATOM_LIST, CHARGES, BOND_NAMES,
                         MAX_NUM_ATOMS, FEATURE_DEPTH,
                         NUM_FILTERS, FILTER_SIZE, NUM_RES_BLOCKS)
@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=4,
+              epochs=2,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
