@@ -1,2 +1,2 @@
-# SEED
-Structure encoder for evolutionary drug design
+# SEEM
+Structure encoder for embedding molecule
