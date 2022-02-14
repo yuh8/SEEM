@@ -282,6 +282,20 @@ def decompose_smi_graph(smi_graph):
     return actions, states[:-1]
 
 
+def standardize_smiles_error_handle(smi):
+    '''
+    convert smiles to Kekulized form
+    to convert aromatic bond to single/double/triple bond
+    '''
+    try:
+        mol = Chem.MolFromSmiles(smi)
+        Chem.Kekulize(mol, clearAromaticFlags=True)
+        smi = Chem.MolToSmiles(mol, isomericSmiles=False)
+    except:
+        return np.nan
+    return smi
+
+
 if __name__ == "__main__":
     smi = 'CCC(C(O)C)CN'
     smiles_to_graph(smi)

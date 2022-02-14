@@ -132,10 +132,10 @@ if __name__ == "__main__":
     freeze_support()
     ckpt_path = 'checkpoints/generator_{}/'.format(today)
     create_folder(ckpt_path)
-    create_folder("generator_model_{}".format(today))
-    train_path = 'D:/seed_data/generator/train_data/train_batch/'
-    val_path = 'D:/seed_data/generator/test_data/val_batch/'
-    test_path = 'D:/seed_data/generator/test_data/test_batch/'
+    create_folder("generator_model_zinc250k_{}".format(today))
+    train_path = 'D:/seed_data/generator/train_data/train_batch_zinc/'
+    val_path = 'D:/seed_data/generator/test_data/val_batch_zinc/'
+    test_path = 'D:/seed_data/generator/test_data/test_batch_zinc/'
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
@@ -150,11 +150,11 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss=keras.losses.CategoricalCrossentropy(from_logits=True),
                   metrics=[keras.metrics.CategoricalAccuracy()])
-    save_model_to_json(model, "generator_model_{}/generator_model.json".format(today))
+    save_model_to_json(model, "generator_model_zinc250k_{}/generator_model_zinc250k.json".format(today))
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=2,
+              epochs=4,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
@@ -164,6 +164,6 @@ if __name__ == "__main__":
 
     # save trained model in two ways
     model.save("generator_full_model_{}/".format(today))
-    model_new = models.load_model("generator_full_model_{}/".format(today))
+    model_new = models.load_model("generator_full_model_zinc250k_{}/".format(today))
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)

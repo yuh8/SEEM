@@ -1,10 +1,13 @@
-from copy import deepcopy
 import numpy as np
 import pandas as pd
+from copy import deepcopy
+from multiprocessing import Pool, freeze_support
 from tensorflow import keras
 from rdkit import Chem
+from rdkit import DataStructs
 from scipy.special import softmax
 from src.data_process_utils import (get_action_mask_from_state,
+                                    standardize_smiles_error_handle,
                                     get_last_col_with_atom, draw_smiles,
                                     get_initial_act_vec, graph_to_smiles)
 from src.misc_utils import create_folder, load_json_model
@@ -190,7 +193,66 @@ def compute_novelty_score():
     return novelty_score
 
 
+def _parallel_get_fps(smi):
+    smi = _canonicalize_smiles(smi)
+    if isinstance(smi, str):
+        mol = Chem.MolFromSmiles(smi)
+        return Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, 6, 2048)
+
+
+def _parallel_get_int_dists(fp_new, fps):
+    dist = DataStructs.BulkTanimotoSimilarity(fp_new, fps)
+    return np.sum(dist)
+
+
+def _parallel_get_ext_dists(fp_new, fps):
+    sm = DataStructs.BulkTanimotoSimilarity(fp_new, fps)
+    return np.max(sm)
+
+
+def compute_external_diversity(file_A, file_B):
+    smiles_A = pd.read_csv(file_A).Smiles.map(standardize_smiles_error_handle)
+    smiles_B = pd.read_csv(file_B).iloc[:1000000].Smiles
+    smiles_B = smiles_B.map(standardize_smiles_error_handle)
+    smiles_A = smiles_A[~smiles_A.isnull()]
+    smiles_B = smiles_B[~smiles_B.isnull()]
+
+    with Pool() as pool:
+        fps_A = pool.map(_parallel_get_fps, smiles_A)
+
+    with Pool() as pool:
+        fps_B = pool.map(_parallel_get_fps, smiles_B)
+
+    fps_A = list(filter(None, fps_A))
+    fps_B = list(filter(None, fps_B))
+
+    sims = []
+    for fp in fps_A:
+        simi = _parallel_get_ext_dists(fp, fps_B)
+        sims.append(simi)
+
+    return 1 - np.sum(sims) / len(fps_A)
+
+
+def compute_internal_diversity(file_A):
+    smiles_A = pd.read_csv(file_A).Smiles.map(standardize_smiles_error_handle)
+    smiles_A = smiles_A[~smiles_A.isnull()]
+
+    with Pool() as pool:
+        fps_A = pool.map(_parallel_get_fps, smiles_A)
+
+    fps_A = list(filter(None, fps_A))
+
+    sims = []
+    for fp in fps_A:
+        simi = _parallel_get_int_dists(fp, fps_A)
+        sims.append(simi)
+
+    return 1 - np.sum(sims) / (len(fps_A) ** 2)
+
+
 if __name__ == "__main__":
+    freeze_support()
     create_folder('gen_samples/')
     model = load_json_model("generator_model_2021-12-17/generator_model.json")
     model.compile(optimizer='adam',
@@ -217,4 +279,7 @@ if __name__ == "__main__":
     gen_samples_df.to_csv('generated_molecules.csv', index=False)
     compute_unique_score()
     compute_novelty_score()
+    ext_div = compute_external_diversity('generated_molecules_rl.csv', 'generated_molecules_chembl.csv')
+    int_div = compute_internal_diversity('generated_molecules_rl.csv')
+    print('external diversity = {0} and internal diversity = {1}'.format(ext_div, int_div))
     breakpoint()
