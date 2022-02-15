@@ -9,6 +9,20 @@ from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
 RDLogger.DisableLog('rdApp.*')
 
 
+def standardize_smiles_error_handle(smi):
+    '''
+    convert smiles to Kekulized form
+    to convert aromatic bond to single/double/triple bond
+    '''
+    try:
+        mol = Chem.MolFromSmiles(smi)
+        Chem.Kekulize(mol, clearAromaticFlags=True)
+        smi = Chem.MolToSmiles(mol, isomericSmiles=False)
+    except:
+        return np.nan
+    return smi
+
+
 def has_valid_elements(mol):
     len_elements = len([atom.GetSymbol() for atom in mol.GetAtoms()])
     if len_elements > MAX_NUM_ATOMS:
