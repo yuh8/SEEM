@@ -3,7 +3,7 @@ from rdkit import Chem
 from src.data_process_utils import standardize_smiles_error_handle
 
 
-df_base = pd.read_csv("D:/seed_data/generator/train_data/df_train_zinc.csv", low_memory=False)[:1000000]
+df_base = pd.read_csv("D:/seed_data/generator/train_data/df_train.csv", low_memory=False)[:1000000]
 gen_samples_df = []
 count = 0
 for _, row in df_base.iterrows():
@@ -22,4 +22,4 @@ for _, row in df_base.iterrows():
 
 
 gen_samples_df = pd.DataFrame(gen_samples_df)
-gen_samples_df.to_csv('generated_molecules_zinc250k.csv', index=False)
+gen_samples_df.to_csv('molecules_chembl.csv', index=False)

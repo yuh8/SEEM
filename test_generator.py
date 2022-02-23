@@ -5,6 +5,7 @@ from multiprocessing import Pool, freeze_support
 from tensorflow import keras
 from rdkit import Chem
 from rdkit import DataStructs
+from rdkit.Chem import rdMolDescriptors
 from scipy.special import softmax
 from src.data_process_utils import (get_action_mask_from_state,
                                     standardize_smiles_error_handle,
@@ -197,7 +198,7 @@ def _parallel_get_fps(smi):
     smi = _canonicalize_smiles(smi)
     if isinstance(smi, str):
         mol = Chem.MolFromSmiles(smi)
-        return Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, 6, 2048)
+        return rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, 6, 2048)
 
 
 def _parallel_get_int_dists(fp_new, fps):
