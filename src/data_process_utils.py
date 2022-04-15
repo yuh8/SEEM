@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from copy import deepcopy
 from rdkit import Chem
@@ -7,6 +8,20 @@ from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
                      ATOM_LIST, ATOM_MAX_VALENCE,
                      BOND_NAMES, CHARGES)
 RDLogger.DisableLog('rdApp.*')
+np.set_printoptions(threshold=np.inf)
+np.set_printoptions(linewidth=1000)
+
+
+def random_mol(mol):
+    mol.SetProp("_canonicalRankingNumbers", "True")
+    idxs = list(range(0, mol.GetNumAtoms()))
+    random.shuffle(idxs)
+    for i, v in enumerate(idxs):
+        mol.GetAtomWithIdx(i).SetProp("_canonicalRankingNumber", str(v))
+    smi = Chem.MolToSmiles(mol)
+    mol = Chem.MolFromSmiles(smi)
+    Chem.Kekulize(mol, clearAromaticFlags=True)
+    return mol
 
 
 def has_valid_elements(mol):
@@ -89,6 +104,7 @@ def smiles_to_graph(smi):
     if not is_smile_valid(smi):
         return None
     mol = standardize_smiles_to_mol(smi)
+    mol = random_mol(mol)
     smi_graph = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
     elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
     charges = [atom.GetFormalCharge() for atom in mol.GetAtoms()]

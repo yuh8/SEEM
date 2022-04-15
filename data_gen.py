@@ -38,7 +38,8 @@ def save_data_batch(raw_data_path, dest_data_path):
             smi_graph = smiles_to_graph(row.Smiles)
             if smi_graph is None:
                 continue
-        except:
+        except Exception as e:
+            print(e)
             continue
 
         actions, states = decompose_smi_graph(smi_graph)
