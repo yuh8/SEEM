@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from copy import deepcopy
 from multiprocessing import Pool, freeze_support
 from tensorflow import keras
@@ -150,7 +151,8 @@ def generate_smiles(model, gen_idx):
     while not is_terminate:
         X_in = deepcopy(state[np.newaxis, ...])
         X_in[..., -1] /= 8
-        action_logits = model(X_in, training=False).numpy()[0]
+        with tf.device("/cpu:0"):
+            action_logits = model(X_in, training=False).numpy()[0]
         # state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
         state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
@@ -255,11 +257,11 @@ def compute_internal_diversity(file_A):
 if __name__ == "__main__":
     freeze_support()
     create_folder('gen_samples/')
-    model = load_json_model("generator_model_2021-12-17/generator_model.json")
+    model = load_json_model("generator_model_random_mol_2022-04-17/generator_model_random_mol.json")
     model.compile(optimizer='adam',
                   loss=keras.losses.CategoricalCrossentropy(from_logits=True),
                   metrics=[keras.metrics.CategoricalAccuracy()])
-    model.load_weights("./checkpoints/generator_2021-12-17/")
+    model.load_weights("./checkpoints/generator_2022-04-17/")
     gen_samples_df = []
     count = 0
     for idx in range(10000):
