@@ -128,15 +128,15 @@ def update_state_with_action_validity_check(action_logits, state, num_atoms):
             row_idx = cell_idx % MAX_NUM_ATOMS
             bond_idx = (action_idx - num_act_charge_actions) % len(BOND_NAMES)
             bond_feature_idx = len(ATOM_LIST) + bond_idx
-            atom_idx_row = state[row_idx, row_idx, :len(ATOM_LIST)].argmax()
-            atom_idx_col = state[col_idx, col_idx, :len(ATOM_LIST)].argmax()
+            atom_idx_row = state_new[row_idx, row_idx, :len(ATOM_LIST)].argmax()
+            atom_idx_col = state_new[col_idx, col_idx, :len(ATOM_LIST)].argmax()
             feature_vec[bond_feature_idx] = 1
             feature_vec[atom_idx_row] += 1
             feature_vec[atom_idx_col] += 1
-            state[row_idx, col_idx, :-1] = feature_vec
-            state[col_idx, row_idx, :-1] = feature_vec
-            state[row_idx, row_idx, -1] -= bond_idx
-            state[col_idx, col_idx, -1] -= bond_idx
+            state_new[row_idx, col_idx, :-1] = feature_vec
+            state_new[col_idx, row_idx, :-1] = feature_vec
+            state_new[row_idx, row_idx, -1] -= bond_idx
+            state_new[col_idx, col_idx, -1] -= bond_idx
             mol = graph_to_smiles(state_new[:, :, :-1], return_mol=True)
             valid = check_validity(mol)
             if not valid:
