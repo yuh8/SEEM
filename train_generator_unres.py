@@ -18,7 +18,7 @@ def core_model():
     # [BATCH, MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1]
     X = layers.Input(shape=(MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
     num_act_charge_actions = len(ATOM_LIST) * len(CHARGES)
-    num_loc_bond_actions = (MAX_NUM_ATOMS - 1) * len(BOND_NAMES)
+    num_loc_bond_actions = MAX_NUM_ATOMS * MAX_NUM_ATOMS * len(BOND_NAMES)
     # X_mask = layers.Input(shape=(num_act_charge_actions + num_loc_bond_actions))
 
     # [BATCH, MAX_NUM_ATOMS, MAX_NUM_ATOMS, NUM_FILTERS]
@@ -132,11 +132,11 @@ if __name__ == "__main__":
     freeze_support()
     ckpt_path = 'checkpoints/generator_{}/'.format(today)
     create_folder(ckpt_path)
-    create_folder("generator_model_random_mol_{}".format(today))
+    create_folder("generator_model_random_mol_unres_{}".format(today))
     train_path = 'D:/seed_data/generator/train_data/train_batch/'
     val_path = 'D:/seed_data/generator/test_data/val_batch/'
     test_path = 'D:/seed_data/generator/test_data/test_batch/'
-    log_dir = "logs/random_mol_{}/".format(today)
+    log_dir = "logs/random_mol_unres_{}/".format(today)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
@@ -153,11 +153,11 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss=keras.losses.CategoricalCrossentropy(from_logits=True),
                   metrics=[keras.metrics.CategoricalAccuracy()])
-    save_model_to_json(model, "generator_model_random_mol_{}/generator_model_random_mol.json".format(today))
+    save_model_to_json(model, "generator_model_random_mol_unres_{}/generator_model_random_mol_unres.json".format(today))
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=2,
+              epochs=4,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model_random_mol_{}/".format(today))
-    model_new = models.load_model("generator_full_model_random_mol_{}/".format(today))
+    model.save("generator_full_model_random_mol_unres_{}/".format(today))
+    model_new = models.load_model("generator_full_model_random_mol_unres_{}/".format(today))
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)
