@@ -257,11 +257,12 @@ def compute_internal_diversity(file_A):
 if __name__ == "__main__":
     freeze_support()
     create_folder('gen_samples/')
-    model = load_json_model("generator_model_random_mol_2022-04-17/generator_model_random_mol.json")
-    model.compile(optimizer='adam',
-                  loss=keras.losses.CategoricalCrossentropy(from_logits=True),
-                  metrics=[keras.metrics.CategoricalAccuracy()])
-    model.load_weights("./checkpoints/generator_2022-04-17/")
+    # model = load_json_model("generator_model_random_mol_2022-04-17/generator_model_random_mol.json")
+    # model.compile(optimizer='adam',
+    #               loss=keras.losses.CategoricalCrossentropy(from_logits=True),
+    #               metrics=[keras.metrics.CategoricalAccuracy()])
+    # model.load_weights("./checkpoints/generator_2022-04-17/")
+    model = tf.keras.models.load_model('random_mol/')
     gen_samples_df = []
     count = 0
     for idx in range(10000):
