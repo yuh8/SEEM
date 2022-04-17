@@ -132,16 +132,19 @@ if __name__ == "__main__":
     freeze_support()
     ckpt_path = 'checkpoints/generator_{}/'.format(today)
     create_folder(ckpt_path)
-    create_folder("generator_model_zinc250k_{}".format(today))
+    create_folder("generator_model_random_mol_{}".format(today))
     train_path = 'D:/seed_data/generator/train_data/train_batch_zinc/'
     val_path = 'D:/seed_data/generator/test_data/val_batch_zinc/'
     test_path = 'D:/seed_data/generator/test_data/test_batch_zinc/'
+    log_dir = "logs/random_mol_{}/".format(today)
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
                                                     save_freq=1000,
                                                     save_weights_only=True,
                                                     monitor='categorical_accuracy',
                                                     mode='max',
-                                                    save_best_only=True)]
+                                                    save_best_only=True),
+                 tf.keras.callbacks.TensorBoard(log_dir=log_dir, update_freq=100)]
     steps_per_epoch = len(glob.glob(train_path + 'Xy_*.pkl'))
     val_steps = len(glob.glob(val_path + 'Xy_*.pkl'))
     # train
@@ -150,7 +153,7 @@ if __name__ == "__main__":
     model.compile(optimizer=get_optimizer(),
                   loss=keras.losses.CategoricalCrossentropy(from_logits=True),
                   metrics=[keras.metrics.CategoricalAccuracy()])
-    save_model_to_json(model, "generator_model_zinc250k_{}/generator_model_zinc250k.json".format(today))
+    save_model_to_json(model, "generator_model_random_mol_{}/generator_model_random_mol.json".format(today))
 
     model.summary()
     model.fit(data_iterator(train_path),
@@ -163,7 +166,7 @@ if __name__ == "__main__":
                          return_dict=True)
 
     # save trained model in two ways
-    model.save("generator_full_model_{}/".format(today))
-    model_new = models.load_model("generator_full_model_zinc250k_{}/".format(today))
+    model.save("generator_full_model_random_mol_{}/".format(today))
+    model_new = models.load_model("generator_full_model_random_mol_{}/".format(today))
     res = model_new.evaluate(data_iterator_test(test_path),
                              return_dict=True)

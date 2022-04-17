@@ -151,8 +151,8 @@ def generate_smiles(model, gen_idx):
         X_in = deepcopy(state[np.newaxis, ...])
         X_in[..., -1] /= 8
         action_logits = model(X_in, training=False).numpy()[0]
-        state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
-        # state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
+        # state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
+        state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
@@ -170,7 +170,7 @@ def _canonicalize_smiles(smi):
 
 
 def compute_unique_score():
-    gen_samples_df = pd.read_csv("generated_molecules.csv")
+    gen_samples_df = pd.read_csv("generated_molecules_random_mol.csv")
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     gen_samples_df = gen_samples_df[~gen_samples_df.CanSmiles.isnull()]
     num_uniques = gen_samples_df.CanSmiles.unique().shape[0]
@@ -180,7 +180,7 @@ def compute_unique_score():
 
 
 def compute_novelty_score():
-    gen_samples_df = pd.read_csv("generated_molecules.csv")
+    gen_samples_df = pd.read_csv("generated_molecules_random_mol.csv")
     train_samples_df = pd.read_csv('D:/seed_data/generator/train_data/df_train.csv')
     gen_samples_df.loc[:, 'CanSmiles'] = gen_samples_df.Smiles.map(_canonicalize_smiles)
     train_samples_df.loc[:, 'CanSmiles'] = train_samples_df.Smiles.map(_canonicalize_smiles)
@@ -277,10 +277,10 @@ if __name__ == "__main__":
         print("validation rate = {}".format(np.round(count / (idx + 1), 3)))
 
     gen_samples_df = pd.DataFrame(gen_samples_df)
-    gen_samples_df.to_csv('generated_molecules.csv', index=False)
+    gen_samples_df.to_csv('generated_molecules_random_mol.csv', index=False)
     compute_unique_score()
     compute_novelty_score()
-    ext_div = compute_external_diversity('generated_molecules.csv', 'molecules_chembl.csv')
-    int_div = compute_internal_diversity('generated_molecules.csv')
+    ext_div = compute_external_diversity('generated_molecules_random_mol.csv', 'molecules_chembl.csv')
+    int_div = compute_internal_diversity('generated_molecules_random_mol.csv')
     print('external diversity = {0} and internal diversity = {1}'.format(ext_div, int_div))
     breakpoint()
