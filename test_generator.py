@@ -153,8 +153,8 @@ def generate_smiles(model, gen_idx):
         X_in[..., -1] /= 8
         with tf.device("/cpu:0"):
             action_logits = model(X_in, training=False).numpy()[0]
-        # state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
-        state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
+        state, is_terminate = update_state_with_action_validity_check(action_logits, state, num_atoms)
+        # state, is_terminate = update_state_with_action(action_logits, state, num_atoms)
 
     smi_graph = state[..., :-1]
     smi = graph_to_smiles(smi_graph)
