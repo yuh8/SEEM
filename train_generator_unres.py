@@ -133,9 +133,9 @@ if __name__ == "__main__":
     ckpt_path = 'checkpoints/generator_{}/'.format(today)
     create_folder(ckpt_path)
     create_folder("generator_model_random_mol_unres_{}".format(today))
-    train_path = 'D:/seed_data/generator/train_data/train_batch/'
-    val_path = 'D:/seed_data/generator/test_data/val_batch/'
-    test_path = 'D:/seed_data/generator/test_data/test_batch/'
+    train_path = 'D:/seed_data/generator/train_data_unres/train_batch/'
+    val_path = 'D:/seed_data/generator/test_data_unres/val_batch/'
+    test_path = 'D:/seed_data/generator/test_data_unres/test_batch/'
     log_dir = "logs/random_mol_unres_{}/".format(today)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     callbacks = [tf.keras.callbacks.ModelCheckpoint(ckpt_path,
@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
     model.summary()
     model.fit(data_iterator(train_path),
-              epochs=4,
+              epochs=1,
               validation_data=data_iterator(val_path),
               validation_steps=val_steps,
               callbacks=callbacks,
