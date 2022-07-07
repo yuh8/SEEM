@@ -4,8 +4,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
 from .CONSTS import (FEATURE_DEPTH, MAX_NUM_ATOMS,
-                     ATOM_LIST, ATOM_MAX_VALENCE,
-                     BOND_NAMES, CHARGES)
+                     ATOM_LIST, BOND_NAMES, CHARGES)
 RDLogger.DisableLog('rdApp.*')
 
 
@@ -62,7 +61,7 @@ def standardize_smiles(smi):
     '''
     mol = Chem.MolFromSmiles(smi)
     Chem.Kekulize(mol, clearAromaticFlags=True)
-    smi = Chem.MolToSmiles(mol, isomericSmiles=False)
+    smi = Chem.MolToSmiles(mol)
     return smi
 
 
@@ -92,6 +91,7 @@ def smiles_to_graph(smi):
     smi_graph = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH))
     elements = [atom.GetSymbol() for atom in mol.GetAtoms()]
     charges = [atom.GetFormalCharge() for atom in mol.GetAtoms()]
+    valences = [atom.GetTotalValence() for atom in mol.GetAtoms()]
     for ii, ei in enumerate(elements):
         for jj, ej in enumerate(elements):
             feature_vec = np.zeros(FEATURE_DEPTH)
@@ -114,7 +114,7 @@ def smiles_to_graph(smi):
             smi_graph[ii, jj, :] = feature_vec
             smi_graph[jj, ii, :] = feature_vec
 
-    return smi_graph
+    return smi_graph, valences
 
 
 def update_atom_property(mol, charges):
@@ -241,7 +241,7 @@ def get_action_mask_from_state(state):
     return action_vec_mask
 
 
-def decompose_smi_graph(smi_graph):
+def decompose_smi_graph(smi_graph, valences):
     gragh_dim = smi_graph.shape[0]
     # last feature dim tracks the remaining valence
     state = np.zeros((MAX_NUM_ATOMS, MAX_NUM_ATOMS, FEATURE_DEPTH + 1))
@@ -260,7 +260,7 @@ def decompose_smi_graph(smi_graph):
         actions.append(act_idx_to_vect(action_idx))
         state[jj, jj, :-1] = smi_graph[jj, jj, :]
         # once an atom is added, initialize with full valence
-        state[jj, jj, -1] = ATOM_MAX_VALENCE[atom_act_idx]
+        state[jj, jj, -1] = valences[jj]
         states.append(deepcopy(state))
         for ii in range(jj):
             charge_act_idx = None
@@ -290,7 +290,7 @@ def standardize_smiles_error_handle(smi):
     try:
         mol = Chem.MolFromSmiles(smi)
         Chem.Kekulize(mol, clearAromaticFlags=True)
-        smi = Chem.MolToSmiles(mol, isomericSmiles=False)
+        smi = Chem.MolToSmiles(mol)
     except:
         return np.nan
     return smi
